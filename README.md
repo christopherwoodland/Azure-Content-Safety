@@ -1,6 +1,8 @@
 # NovelCsamDetection
 
-# NovelCsam.UI.Console
+## Azure AI Content Safety
+- https://learn.microsoft.com/en-us/azure/ai-services/content-safety/overview
+- https://learn.microsoft.com/en-us/azure/ai-services/content-safety/concepts/harm-categories?tabs=warning
 
 ## Overview
 
