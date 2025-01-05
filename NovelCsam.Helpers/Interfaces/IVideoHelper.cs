@@ -1,4 +1,4 @@
-﻿namespace NovelCsamDetection.Helpers.Interfaces
+﻿namespace NovelCsam.Helpers.Interfaces
 {
 	public interface IVideoHelper
 	{

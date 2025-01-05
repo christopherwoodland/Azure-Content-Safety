@@ -1,4 +1,4 @@
-namespace NovelCsamDetection.Helpers
+namespace NovelCsam.Helpers
 {
 	public class ContentSafetyHelper : IContentSafetyHelper
 	{

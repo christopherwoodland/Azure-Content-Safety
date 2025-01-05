@@ -3,7 +3,7 @@ using Microsoft.ApplicationInsights;
 using System;
 using System.Collections.Generic;
 
-namespace NovelCsamDetection.Helpers
+namespace NovelCsam.Helpers
 {
 	public class LogHelper : ILogHelper
 	{
