@@ -25,15 +25,19 @@
 			_serviceClient = new DataLakeServiceClient(new Uri(serviceUri), new StorageSharedKeyCredential(storageAccountName, storageAccountKey));
 		}
 
-		private async Task<BinaryData> GetFileAsBinaryDataWithResizeAsync(string fileName, string containerName, string folderPath, int maxSize)
+		private async Task<BinaryData?> GetFileAsBinaryDataWithResizeAsync(string fileName, string containerName, string folderPath, int maxSize)
 		{
+
 			var fileClient = GetFileClient(containerName, folderPath, fileName);
 			var downloadResponse = await fileClient.ReadAsync();
 
 			using var memoryStream = new MemoryStream();
 			await downloadResponse.Value.Content.CopyToAsync(memoryStream);
 			memoryStream.Position = 0;
-
+			if (memoryStream.Length <= 0)
+			{
+				return null;
+			}
 			if (memoryStream.Length >= maxSize)
 			{
 				using var originalImage = Image.FromStream(memoryStream);
@@ -52,7 +56,8 @@
 			}
 		}
 
-		private async Task<BinaryData> GetFileAsBinaryDataAsync(string fileName, string containerName, string folderPath)
+
+		private async Task<BinaryData?> GetFileAsBinaryDataAsync(string fileName, string containerName, string folderPath)
 		{
 			var fileClient = GetFileClient(containerName, folderPath, fileName);
 			var downloadResponse = await fileClient.ReadAsync();
@@ -60,6 +65,10 @@
 			using var memoryStream = new MemoryStream();
 			await downloadResponse.Value.Content.CopyToAsync(memoryStream);
 			memoryStream.Position = 0;
+			if (memoryStream.Length <= 0)
+			{
+				return null;
+			}
 			return new BinaryData(memoryStream.ToArray());
 		}
 
@@ -76,7 +85,14 @@
 				return ResizeImage(originalImage, newWidth, newHeight);
 			}
 
-			return originalImage;
+			// Create a new Bitmap with the same dimensions as the original image
+			var newImage = new Bitmap(originalImage.Width, originalImage.Height);
+			using (var graphics = Graphics.FromImage(newImage))
+			{
+				graphics.DrawImage(originalImage, 0, 0, originalImage.Width, originalImage.Height);
+			}
+
+			return newImage;
 		}
 
 		private Image ResizeImage(Image image, int width, int height)
@@ -103,7 +119,6 @@
 
 			return destImage;
 		}
-
 		private Image ResizeImage(Image image, int maxSize)
 		{
 			int newWidth = image.Width > image.Height ? maxSize : (int)(image.Width * (maxSize / (double)image.Height));
@@ -152,10 +167,22 @@
 				}
 				else
 				{
-					var binaryData = resize
-						? await GetFileAsBinaryDataWithResizeAsync(Path.GetFileName(pathItem.Name), containerName, folderPath, 4194304)
-						: await GetFileAsBinaryDataAsync(Path.GetFileName(pathItem.Name), containerName, folderPath);
-					ret.Add(pathItem.Name, binaryData);
+					try
+					{
+						var binaryData = resize
+							? await GetFileAsBinaryDataWithResizeAsync(Path.GetFileName(pathItem.Name), containerName, folderPath, 4194304)
+							: await GetFileAsBinaryDataAsync(Path.GetFileName(pathItem.Name), containerName, folderPath);
+
+						if (binaryData != null)
+						{
+							ret.Add(pathItem.Name, binaryData);
+						}
+					}
+					catch (Exception ex)
+					{
+						_logHelper.LogException($"An error occurred listing blobs: {ex.Message}", nameof(StorageHelper), nameof(ListBlobsRecursive), ex);
+						continue;
+					}
 				}
 			}
 		}

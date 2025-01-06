@@ -127,19 +127,27 @@ internal class Program
 				{
 					case "1":
 						var chosenFileName = ShowFileDialog();
-						await UploadVideoAsync(videoHelper, ContainerVideos, ContainerInput, chosenFileName);
+
+						if (!string.IsNullOrEmpty(chosenFileName))
+						{
+							await UploadVideoAsync(videoHelper, ContainerVideos, ContainerInput, chosenFileName);
+						}
 						break;
 					case "2":
 						var chosenFolderName = ShowFolderBrowserDialog();
-						var uploadImagesResult = await UploadImagesAsync(videoHelper, ContainerVideos, ContainerExtracted, chosenFolderName);
-						if (uploadImagesResult)
+						if (!string.IsNullOrEmpty(chosenFolderName))
 						{
-							Console.WriteLine("****************************************************");
-							Console.WriteLine($"Image files uploaded!");
-							Console.WriteLine("****************************************************\n\n");
-						}
-						else {
-							Console.WriteLine("There was an issue while uploading the images.");
+							var uploadImagesResult = await UploadImagesAsync(videoHelper, ContainerVideos, ContainerExtracted, chosenFolderName);
+							if (uploadImagesResult)
+							{
+								Console.WriteLine("****************************************************");
+								Console.WriteLine($"Image files uploaded!");
+								Console.WriteLine("****************************************************\n\n");
+							}
+							else
+							{
+								Console.WriteLine("There was an issue while uploading the images.");
+							}
 						}
 						break;
 					case "3":
@@ -229,42 +237,6 @@ internal class Program
 		Console.WriteLine($"----------------------------------------------------------------------------\r\n");
 
 	}
-
-	//private static async Task UploadVideoAsync(IVideoHelper videoHelper, string containerName, string inputFolder)
-	//{
-	//	Thread t = new((ThreadStart)(async () =>
-	//	{
-	//		using var openFileDialog = new OpenFileDialog
-	//		{
-	//			InitialDirectory = "C:\\",
-	//			Filter = "All Video Files|*.mp4;*.avi;*.mov;*.wmv;*.flv;*.mkv;*.webm;*.mpeg;*.mpg|MP4 Files (*.mp4)|*.mp4|AVI Files (*.avi)|*.avi|MOV Files (*.mov)|*.mov|WMV Files (*.wmv)|*.wmv|FLV Files (*.flv)|*.flv|MKV Files (*.mkv)|*.mkv|WebM Files (*.webm)|*.webm|MPEG Files (*.mpeg;*.mpg)|*.mpeg;*.mpg|All files (*.*)|*.*",
-	//			FilterIndex = 1,
-	//			RestoreDirectory = true
-	//		};
-
-	//		if (openFileDialog.ShowDialog() != DialogResult.OK)
-	//		{
-	//			Console.WriteLine("No file selected.");
-	//			return;
-	//		}
-
-	//		string selectedFilePath = openFileDialog.FileName;
-	//		Console.WriteLine($"----------------------------------------------------------------------------\n");
-	//		Console.WriteLine($"Selected file: {selectedFilePath}");
-	//		var progressBar = new NovelCsam.Helpers.ProgressBar();
-	//		var done = "";
-	//		await progressBar.RunWithProgressBarAsync(async () =>
-	//		{
-	//			done = await videoHelper.UploadFileToBlobAsync(containerName, inputFolder, selectedFilePath);
-	//		});
-	//		Console.WriteLine($"Selected file Upload Path: {done}");
-	//		Console.WriteLine($"----------------------------------------------------------------------------\r\n");
-	//	}));
-	//	t.SetApartmentState(ApartmentState.STA);
-	//	t.Start();
-	//	t.Join();
-	//}
-
 
 
 	private static async Task ExtractFramesAsync(IVideoHelper videoHelper, IStorageHelper storageHelper, string containerName, string inputFolder, string extractedFolder)
