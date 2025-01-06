@@ -1,7 +1,4 @@
-﻿using NovelCsam.Helpers;
-using System.IO.Abstractions;
-
-internal class Program
+﻿internal class Program
 {
 	private const int FilesPerFolder = 100;
 
@@ -93,21 +90,26 @@ internal class Program
 
 	private static void SetEnvVariables()
 	{
+		// Build configuration
+		var configuration = new ConfigurationBuilder()
+			.SetBasePath(AppContext.BaseDirectory)
+			.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+			.Build();
+
 		var envVariables = new Dictionary<string, string>
 		{
-		{ "AZURE_SQL_CONNECTION_STRING", "YOUR_AZURE_SQL_CONNECTION_STRING" },
-		{ "CONTENT_SAFETY_CONNECTION_STRING", "YOUR_CONTENT_SAFETY_CONNECTION_STRING" },
-		{ "CONTENT_SAFETY_CONNECTION_KEY", "YOUR_CONTENT_SAFETY_CONNECTION_KEY" },
-		{ "STORAGE_ACCOUNT_NAME", "YOUR_STORAGE_ACCOUNT_NAME" },
-		{ "STORAGE_ACCOUNT_KEY", "YOUR_STORAGE_ACCOUNT_KEY" },
-		{ "STORAGE_ACCOUNT_URL", "YOUR_STORAGE_ACCOUNT_URL" },
-		{ "OPEN_AI_DEPLOYMENT_NAME", "YOUR_OPEN_AI_DEPLOYMENT_NAME" },
-		{ "OPEN_AI_KEY", "YOUR_OPEN_AI_KEY" },
-		{ "OPEN_AI_ENDPOINT", "YOUR_OPEN_AI_ENDPOINT" },
-		{ "OPEN_AI_MODEL", "YOUR_OPEN_AI_MODEL" },
-		{ "APP_INSIGHTS_CONNECTION_STRING", "YOUR_APP_INSIGHTS_CONNECTION_STRING" }
+			{ "AZURE_SQL_CONNECTION_STRING", configuration["Azure:SqlConnectionString"] },
+			{ "CONTENT_SAFETY_CONNECTION_STRING", configuration["Azure:ContentSafetyConnectionString"] },
+			{ "CONTENT_SAFETY_CONNECTION_KEY", configuration["Azure:ContentSafetyConnectionKey"] },
+			{ "STORAGE_ACCOUNT_NAME", configuration["Azure:StorageAccountName"] },
+			{ "STORAGE_ACCOUNT_KEY", configuration["Azure:StorageAccountKey"] },
+			{ "STORAGE_ACCOUNT_URL", configuration["Azure:StorageAccountUrl"] },
+			{ "OPEN_AI_DEPLOYMENT_NAME", configuration["Azure:OpenAiDeploymentName"] },
+			{ "OPEN_AI_KEY", configuration["Azure:OpenAiKey"] },
+			{ "OPEN_AI_ENDPOINT", configuration["Azure:OpenAiEndpoint"] },
+			{ "OPEN_AI_MODEL", configuration["Azure:OpenAiModel"] },
+			{ "APP_INSIGHTS_CONNECTION_STRING", configuration["Azure:AppInsightsConnectionString"] }
 		};
-
 		foreach (var envVariable in envVariables)
 		{
 			Environment.SetEnvironmentVariable(envVariable.Key, envVariable.Value);
@@ -271,16 +273,22 @@ internal class Program
 				{
 					Console.WriteLine($"({item.Key}): {item.Value}");
 				}
+				Console.WriteLine($"(-1): Return to Menu");
 				Console.WriteLine($"----------------------------------------------------------------------");
 				Console.WriteLine("Choose which file to extract frames from...e.g. 1");
 				var userInput = Console.ReadLine();
 				bool isInteger = int.TryParse(userInput, out int result);
 				chosenDirKey = isInteger ? result : -1;
-			} while (!menuItems.ContainsKey(chosenDirKey));
+			} while (!menuItems.ContainsKey(chosenDirKey) && chosenDirKey != -1);
+			if (chosenDirKey == -1)
+				return;
 			string chosenDirValue = menuItems[chosenDirKey];
 
 			if (!string.IsNullOrEmpty(chosenDirValue))
 			{
+
+
+
 				var fileName = Path.GetFileName(chosenDirValue);
 				var folderPath = Path.GetDirectoryName(chosenDirValue).Replace("\\", "/");
 
@@ -313,12 +321,15 @@ internal class Program
 				{
 					Console.WriteLine($"({dir.Key}): {dir.Value}");
 				}
+				Console.WriteLine($"(-1): Return to Menu");
 				Console.WriteLine($"----------------------------------------------------------------------");
 				Console.WriteLine("Choose which directory...e.g. 1");
 				var userInput = Console.ReadLine();
 				bool isInteger = int.TryParse(userInput, out int result);
 				chosenDirKey = isInteger ? result : -1;
-			} while (!dirList.ContainsKey(chosenDirKey));
+			} while (!dirList.ContainsKey(chosenDirKey) && chosenDirKey != -1);
+			if (chosenDirKey == -1)
+				return;
 			string chosenDirValue = dirList[chosenDirKey];
 
 			if (!string.IsNullOrEmpty(chosenDirValue))
@@ -359,12 +370,15 @@ internal class Program
 				{
 					Console.WriteLine($"({dir.Key}): {dir.Value}");
 				}
+				Console.WriteLine($"(-1): Return to Menu");
 				Console.WriteLine($"----------------------------------------------------------------------");
 				Console.WriteLine("Choose which directory...e.g. 1");
 				var userInput = Console.ReadLine();
 				bool isInteger = int.TryParse(userInput, out int result);
 				chosenDirKey = isInteger ? result : -1;
-			} while (!dirList.ContainsKey(chosenDirKey));
+			} while (!dirList.ContainsKey(chosenDirKey) && chosenDirKey != -1);
+			if (chosenDirKey == -1)
+				return;
 			string chosenDirValue = dirList[chosenDirKey];
 
 			if (!string.IsNullOrEmpty(chosenDirValue))

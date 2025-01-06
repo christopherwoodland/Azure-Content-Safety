@@ -10,6 +10,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.0" />
     <PackageReference Include="System.Windows.Extensions" Version="9.0.0" />
 	  <Import Include="System.Data" />
 	  <Import Include="System.Drawing" />
@@ -23,6 +25,12 @@
   <ItemGroup>
     <ProjectReference Include="..\NovelCsam.Helpers\NovelCsam.Helpers.csproj" />
 	  <ProjectReference Include="..\NovelCsam.Models\NovelCsam.Models.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
