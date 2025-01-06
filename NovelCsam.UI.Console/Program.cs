@@ -93,7 +93,25 @@ internal class Program
 
 	private static void SetEnvVariables()
 	{
-		
+		var envVariables = new Dictionary<string, string>
+		{
+		{ "AZURE_SQL_CONNECTION_STRING", "YOUR_AZURE_SQL_CONNECTION_STRING" },
+		{ "CONTENT_SAFETY_CONNECTION_STRING", "YOUR_CONTENT_SAFETY_CONNECTION_STRING" },
+		{ "CONTENT_SAFETY_CONNECTION_KEY", "YOUR_CONTENT_SAFETY_CONNECTION_KEY" },
+		{ "STORAGE_ACCOUNT_NAME", "YOUR_STORAGE_ACCOUNT_NAME" },
+		{ "STORAGE_ACCOUNT_KEY", "YOUR_STORAGE_ACCOUNT_KEY" },
+		{ "STORAGE_ACCOUNT_URL", "YOUR_STORAGE_ACCOUNT_URL" },
+		{ "OPEN_AI_DEPLOYMENT_NAME", "YOUR_OPEN_AI_DEPLOYMENT_NAME" },
+		{ "OPEN_AI_KEY", "YOUR_OPEN_AI_KEY" },
+		{ "OPEN_AI_ENDPOINT", "YOUR_OPEN_AI_ENDPOINT" },
+		{ "OPEN_AI_MODEL", "YOUR_OPEN_AI_MODEL" },
+		{ "APP_INSIGHTS_CONNECTION_STRING", "YOUR_APP_INSIGHTS_CONNECTION_STRING" }
+		};
+
+		foreach (var envVariable in envVariables)
+		{
+			Environment.SetEnvironmentVariable(envVariable.Key, envVariable.Value);
+		}
 	}
 
 	[STAThread]
