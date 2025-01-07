@@ -109,6 +109,7 @@
 		services.AddScoped<ILogHelper, LogHelper>();
 		services.AddScoped<IContentSafetyHelper, ContentSafetyHelper>();
 		services.AddScoped<IStorageHelper, StorageHelper>();
+		services.AddScoped<ICsvExporter, CsvExporter>();
 		services.AddTransient<IVideoHelper, VideoHelper>();
 	}
 
@@ -294,7 +295,8 @@
 	#endregion
 
 	#region Export Methods
-	private static async Task ExportRunAsync(IVideoHelper videoHelper, IStorageHelper storageHelper, IAzureSQLHelper sqlHelper, string containerName, string extractedFolder, string resultsFolder)
+	private static async Task ExportRunAsync(IVideoHelper videoHelper, IStorageHelper storageHelper, IAzureSQLHelper sqlHelper, 
+		string containerName, string extractedFolder, string resultsFolder, ICsvExporter csvHelper)
 	{
 		var dirList = await storageHelper.ListDirectoriesInFolderAsync(containerName, extractedFolder, 2) ?? [];
 		if (dirList?.Count > 0)
@@ -323,7 +325,6 @@
 				var records = await sqlHelper.GetFrameResultWithLevelsAsync(chosenDirValue);
 				if (records?.Count != 0)
 				{
-					var csvExporter = new CsvExporter();
 					Console.WriteLine("Enter your export file name..e.g. output.csv");
 					var userInput = Console.ReadLine();
 
@@ -333,14 +334,25 @@
 					}
 
 					var progressBar = new NovelCsam.Helpers.ProgressBar();
+					var ret = false;
 					await progressBar.RunWithProgressBarAsync(async () =>
 					{
-						await csvExporter.ExportToCsvAsync(records, userInput);
+						ret = await csvHelper.ExportToCsvAsync(records, userInput);
 					});
 
-					Console.WriteLine("****************************************************");
-					Console.WriteLine($"{chosenDirValue} is done exporting!");
-					Console.WriteLine("****************************************************");
+					if (ret)
+					{
+
+						Console.WriteLine("****************************************************");
+						Console.WriteLine($"{chosenDirValue} is done exporting!");
+						Console.WriteLine("****************************************************");
+					}
+					else {
+
+						Console.WriteLine("****************************************************");
+						Console.WriteLine($"An error occured when exporting to {chosenDirValue}!");
+						Console.WriteLine("****************************************************");
+					}
 				}
 			}
 		}
@@ -374,6 +386,7 @@
 			var videoHelper = serviceProvider.GetService<IVideoHelper>();
 			var storageHelper = serviceProvider.GetService<IStorageHelper>();
 			var sqlHelper = serviceProvider.GetService<IAzureSQLHelper>();
+			var csvHelper = serviceProvider.GetService<ICsvExporter>();
 
 			if (videoHelper == null || storageHelper == null || sqlHelper == null) return;
 
@@ -414,7 +427,7 @@
 						await RunSafetyAnalysisAsync(videoHelper, storageHelper, ContainerVideos, ContainerExtracted, ContainerResults);
 						break;
 					case "5":
-						await ExportRunAsync(videoHelper, storageHelper, sqlHelper, ContainerVideos, ContainerExtracted, ContainerResults);
+						await ExportRunAsync(videoHelper, storageHelper, sqlHelper, ContainerVideos, ContainerExtracted, ContainerResults, csvHelper);
 						break;
 				}
 				choice = PrintMenu();

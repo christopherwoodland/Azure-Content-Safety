@@ -1,23 +1,41 @@
-﻿
-namespace NovelCsam.Helpers
+﻿namespace NovelCsam.Helpers
 {
-	public class CsvExporter: ICsvExporter
+	public class CsvExporter : ICsvExporter
 	{
-		public async Task ExportToCsvAsync(IEnumerable<IFrameDetailResult> records, string filePath)
+		private readonly ILogHelper _logHelper;
+
+		public CsvExporter(ILogHelper logHelper)
 		{
-			var csvContent = new StringBuilder();
+			_logHelper = logHelper;
 
-			// Add header
-			csvContent.AppendLine("MD5Hash,Summary,ChildYesNo,Frame,Hate,HateLevel,SelfHarm,SelfHarmLevel,Violence,ViolenceLevel,Sexual,SexualLevel,RunDateTime");
-
-			// Add records
-			foreach (var record in records)
+		}
+		public async Task<bool> ExportToCsvAsync(IEnumerable<IFrameDetailResult> records, string filePath)
+		{
+			try
 			{
-				csvContent.AppendLine($"{record.MD5Hash},{record.Summary},{record.ChildYesNo},{record.Frame},{record.Hate},{record.HateLevel},{record.SelfHarm},{record.SelfHarmLevel},{record.Violence},{record.ViolenceLevel},{record.Sexual},{record.SexualLevel},{record.RunDateTime:yyyy-MM-dd HH:mm:ss}");
-			}
 
-			// Write to file
-			await File.WriteAllTextAsync(filePath, csvContent.ToString());
+				var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+				{
+					Delimiter = ",",
+					NewLine = Environment.NewLine,
+					HasHeaderRecord = true
+				};
+
+				using var writer = new StreamWriter(filePath);
+				using var csv = new CsvWriter(writer, config);
+				// Write header
+				csv.WriteHeader<IFrameDetailResult>();
+				await csv.NextRecordAsync();
+
+				// Write records
+				await csv.WriteRecordsAsync(records);
+				return true;
+			}
+			catch (Exception ex)
+			{
+				_logHelper.LogException(ex.Message, nameof(CsvExporter), nameof(ExportToCsvAsync), ex);
+				return false;
+			}
 		}
 	}
 }

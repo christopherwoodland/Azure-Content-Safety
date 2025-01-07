@@ -25,3 +25,6 @@ global using System.Threading.Tasks;
 global using Xabe.FFmpeg;
 global using System.Collections.Generic;
 global using System.IO;
+global using CsvHelper;
+global using CsvHelper.Configuration;
+global using System.Globalization;
