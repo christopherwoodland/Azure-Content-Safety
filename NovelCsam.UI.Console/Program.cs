@@ -1,9 +1,14 @@
 ﻿internal class Program
 {
+	#region Constants
 	private const int FilesPerFolder = 100;
+	#endregion
 
+	#region Helper Methods
 	private static string GenerateFolderName(int folderIndex) => $"Folder_{folderIndex}";
+	#endregion
 
+	#region Upload Methods
 	private static async Task<bool> UploadImagesAsync(IVideoHelper videoHelper, string containerName, string inputFolder, string selectedFolderPath)
 	{
 		Console.WriteLine($"----------------------------------------------------------------------------\n");
@@ -52,6 +57,23 @@
 
 		return done;
 	}
+
+	private static async Task UploadVideoAsync(IVideoHelper videoHelper, string containerName, string inputFolder, string selectedFilePath)
+	{
+		Console.WriteLine($"----------------------------------------------------------------------------\n");
+		Console.WriteLine($"Selected file: {selectedFilePath}");
+		var progressBar = new NovelCsam.Helpers.ProgressBar();
+		var done = "";
+		await progressBar.RunWithProgressBarAsync(async () =>
+		{
+			done = await videoHelper.UploadFileToBlobAsync(containerName, inputFolder, selectedFilePath);
+		});
+		Console.WriteLine($"Selected file uploaded: {done}");
+		Console.WriteLine($"----------------------------------------------------------------------------\r\n");
+	}
+	#endregion
+
+	#region Menu Methods
 	private static string PrintMenu()
 	{
 		string choice;
@@ -73,7 +95,9 @@
 
 		return choice;
 	}
+	#endregion
 
+	#region Configuration Methods
 	private static void ConfigureServices(IServiceCollection services)
 	{
 		services.AddApplicationInsightsTelemetryWorkerService(options =>
@@ -115,7 +139,220 @@
 			Environment.SetEnvironmentVariable(envVariable.Key, envVariable.Value);
 		}
 	}
+	#endregion
 
+	#region Dialog Methods
+	private static string ShowFolderBrowserDialog()
+	{
+		var ret = "";
+		Thread t = new(() =>
+		{
+			using var folderBrowserDialog = new FolderBrowserDialog
+			{
+				Description = "Select a folder containing images",
+				RootFolder = Environment.SpecialFolder.MyComputer
+			};
+
+			if (folderBrowserDialog.ShowDialog() != DialogResult.OK)
+			{
+				Console.WriteLine("No folder selected.");
+				return;
+			}
+
+			ret = folderBrowserDialog.SelectedPath;
+		});
+		t.SetApartmentState(ApartmentState.STA);
+		t.Start();
+		t.Join();
+		return ret;
+	}
+
+	private static string ShowFileDialog()
+	{
+		var ret = "";
+		Thread t = new(() =>
+		{
+			using var openFileDialog = new OpenFileDialog
+			{
+				InitialDirectory = "C:\\",
+				Filter = "All Video Files|*.mp4;*.avi;*.mov;*.wmv;*.flv;*.mkv;*.webm;*.mpeg;*.mpg|MP4 Files (*.mp4)|*.mp4|AVI Files (*.avi)|*.avi|MOV Files (*.mov)|*.mov|WMV Files (*.wmv)|*.wmv|FLV Files (*.flv)|*.flv|MKV Files (*.mkv)|*.mkv|WebM Files (*.webm)|*.webm|MPEG Files (*.mpeg;*.mpg)|*.mpeg;*.mpg|All files (*.*)|*.*",
+				FilterIndex = 1,
+				RestoreDirectory = true
+			};
+
+			if (openFileDialog.ShowDialog() != DialogResult.OK)
+			{
+				Console.WriteLine("No file selected.");
+				return;
+			}
+			ret = openFileDialog.FileName;
+		});
+		t.SetApartmentState(ApartmentState.STA);
+		t.Start();
+		t.Join();
+		return ret;
+	}
+	#endregion
+
+	#region Frame Extraction Methods
+	private static async Task ExtractFramesAsync(IVideoHelper videoHelper, IStorageHelper storageHelper, string containerName, string inputFolder, string extractedFolder)
+	{
+		var blobList = await storageHelper.ListBlobsInFolderWithResizeAsync(containerName, inputFolder, 3, false) ?? [];
+		if (blobList?.Count > 0)
+		{
+			var menuItems = blobList.Select((item, index) => new { Key = index + 1, Value = item.Key }).ToDictionary(x => x.Key, x => x.Value);
+			int chosenDirKey;
+			do
+			{
+				Console.WriteLine($"----------------------------------------------------------------------");
+				foreach (var item in menuItems)
+				{
+					Console.WriteLine($"({item.Key}): {item.Value}");
+				}
+				Console.WriteLine($"(-1): Return to Menu");
+				Console.WriteLine($"----------------------------------------------------------------------");
+				Console.WriteLine("Choose which file to extract frames from...e.g. 1");
+				var userInput = Console.ReadLine();
+				bool isInteger = int.TryParse(userInput, out int result);
+				chosenDirKey = isInteger ? result : -1;
+			} while (!menuItems.ContainsKey(chosenDirKey) && chosenDirKey != -1);
+			if (chosenDirKey == -1)
+				return;
+			string chosenDirValue = menuItems[chosenDirKey];
+
+			if (!string.IsNullOrEmpty(chosenDirValue))
+			{
+				var fileName = Path.GetFileName(chosenDirValue);
+				var folderPath = Path.GetDirectoryName(chosenDirValue).Replace("\\", "/");
+
+				var progressBar = new NovelCsam.Helpers.ProgressBar();
+				var done = false;
+				await progressBar.RunWithProgressBarAsync(async () =>
+				{
+					done = await videoHelper.UploadExtractedFramesToBlobAsync(1, fileName, containerName, folderPath, extractedFolder, fileName);
+				});
+
+				if (done)
+				{
+					Console.WriteLine("************************************************************");
+					Console.WriteLine($"{chosenDirValue} is done extracting!");
+					Console.WriteLine("************************************************************");
+				}
+			}
+		}
+	}
+	#endregion
+
+	#region Safety Analysis Methods
+	private static async Task RunSafetyAnalysisAsync(IVideoHelper videoHelper, IStorageHelper storageHelper, string containerName, string extractedFolder, string resultsFolder)
+	{
+		var dirList = await storageHelper.ListDirectoriesInFolderAsync(containerName, extractedFolder, 2) ?? [];
+		if (dirList?.Count > 0)
+		{
+			int chosenDirKey;
+			do
+			{
+				Console.WriteLine($"----------------------------------------------------------------------");
+				foreach (var dir in dirList)
+				{
+					Console.WriteLine($"({dir.Key}): {dir.Value}");
+				}
+				Console.WriteLine($"(-1): Return to Menu");
+				Console.WriteLine($"----------------------------------------------------------------------");
+				Console.WriteLine("Choose which directory...e.g. 1");
+				var userInput = Console.ReadLine();
+				bool isInteger = int.TryParse(userInput, out int result);
+				chosenDirKey = isInteger ? result : -1;
+			} while (!dirList.ContainsKey(chosenDirKey) && chosenDirKey != -1);
+			if (chosenDirKey == -1)
+				return;
+			string chosenDirValue = dirList[chosenDirKey];
+
+			if (!string.IsNullOrEmpty(chosenDirValue))
+			{
+				var progressBar = new NovelCsam.Helpers.ProgressBar();
+				var runId = "";
+				await progressBar.RunWithProgressBarAsync(async () =>
+				{
+					runId = await videoHelper.UploadFrameResultsAsync(containerName, chosenDirValue, resultsFolder, true);
+				});
+
+				if (!string.IsNullOrEmpty(runId))
+				{
+					Console.WriteLine("****************************************************");
+					Console.WriteLine($"{chosenDirValue} is done running! RunId: {runId}");
+					Console.WriteLine("****************************************************");
+				}
+			}
+		}
+		else
+		{
+			Console.WriteLine("There are no directories containing images for processing. \r\n" +
+				"Try extracting some frames or uploading some images.");
+		}
+	}
+	#endregion
+
+	#region Export Methods
+	private static async Task ExportRunAsync(IVideoHelper videoHelper, IStorageHelper storageHelper, IAzureSQLHelper sqlHelper, string containerName, string extractedFolder, string resultsFolder)
+	{
+		var dirList = await storageHelper.ListDirectoriesInFolderAsync(containerName, extractedFolder, 2) ?? [];
+		if (dirList?.Count > 0)
+		{
+			int chosenDirKey;
+			do
+			{
+				Console.WriteLine($"----------------------------------------------------------------------");
+				foreach (var dir in dirList)
+				{
+					Console.WriteLine($"({dir.Key}): {dir.Value}");
+				}
+				Console.WriteLine($"(-1): Return to Menu");
+				Console.WriteLine($"----------------------------------------------------------------------");
+				Console.WriteLine("Choose which directory...e.g. 1");
+				var userInput = Console.ReadLine();
+				bool isInteger = int.TryParse(userInput, out int result);
+				chosenDirKey = isInteger ? result : -1;
+			} while (!dirList.ContainsKey(chosenDirKey) && chosenDirKey != -1);
+			if (chosenDirKey == -1)
+				return;
+			string chosenDirValue = dirList[chosenDirKey];
+
+			if (!string.IsNullOrEmpty(chosenDirValue))
+			{
+				var records = await sqlHelper.GetFrameResultWithLevelsAsync(chosenDirValue);
+				if (records?.Count != 0)
+				{
+					var csvExporter = new CsvExporter();
+					Console.WriteLine("Enter your export file name..e.g. output.csv");
+					var userInput = Console.ReadLine();
+
+					if (records == null || userInput == null)
+					{
+						throw new Exception("Records and/or UserInput is null");
+					}
+
+					var progressBar = new NovelCsam.Helpers.ProgressBar();
+					await progressBar.RunWithProgressBarAsync(async () =>
+					{
+						await csvExporter.ExportToCsvAsync(records, userInput);
+					});
+
+					Console.WriteLine("****************************************************");
+					Console.WriteLine($"{chosenDirValue} is done exporting!");
+					Console.WriteLine("****************************************************");
+				}
+			}
+		}
+		else
+		{
+			Console.WriteLine("There are no directories containing images for processing. \r\n" +
+				"Try extracting some frames or uploading some images.");
+		}
+	}
+	#endregion
+
+	#region Main Method
 	[STAThread]
 	public static async Task Main(string[] args)
 	{
@@ -192,226 +429,5 @@
 			logHelper?.LogException($"An error occurred during run in main: {ex.Message}", nameof(Program), nameof(Main), ex);
 		}
 	}
-
-	private static string ShowFolderBrowserDialog()
-	{
-		var ret = "";
-		Thread t = new(() =>
-		{
-			using var folderBrowserDialog = new FolderBrowserDialog
-			{
-				Description = "Select a folder containing images",
-				RootFolder = Environment.SpecialFolder.MyComputer
-			};
-
-			if (folderBrowserDialog.ShowDialog() != DialogResult.OK)
-			{
-				Console.WriteLine("No folder selected.");
-				return;
-			}
-
-			ret = folderBrowserDialog.SelectedPath;
-		});
-		t.SetApartmentState(ApartmentState.STA);
-		t.Start();
-		t.Join();
-		return ret;
-	}
-	private static string ShowFileDialog()
-	{
-		var ret = "";
-		Thread t = new(() =>
-		{
-			using var openFileDialog = new OpenFileDialog
-			{
-				InitialDirectory = "C:\\",
-				Filter = "All Video Files|*.mp4;*.avi;*.mov;*.wmv;*.flv;*.mkv;*.webm;*.mpeg;*.mpg|MP4 Files (*.mp4)|*.mp4|AVI Files (*.avi)|*.avi|MOV Files (*.mov)|*.mov|WMV Files (*.wmv)|*.wmv|FLV Files (*.flv)|*.flv|MKV Files (*.mkv)|*.mkv|WebM Files (*.webm)|*.webm|MPEG Files (*.mpeg;*.mpg)|*.mpeg;*.mpg|All files (*.*)|*.*",
-				FilterIndex = 1,
-				RestoreDirectory = true
-			};
-
-			if (openFileDialog.ShowDialog() != DialogResult.OK)
-			{
-				Console.WriteLine("No file selected.");
-				return;
-			}
-			ret = openFileDialog.FileName;
-		});
-		t.SetApartmentState(ApartmentState.STA);
-		t.Start();
-		t.Join();
-		return ret;
-	}
-	private static async Task UploadVideoAsync(IVideoHelper videoHelper, string containerName,
-		string inputFolder, string selectedFilePath)
-	{
-		Console.WriteLine($"----------------------------------------------------------------------------\n");
-		Console.WriteLine($"Selected file: {selectedFilePath}");
-		var progressBar = new NovelCsam.Helpers.ProgressBar();
-		var done = "";
-		await progressBar.RunWithProgressBarAsync(async () =>
-		{
-			done = await videoHelper.UploadFileToBlobAsync(containerName, inputFolder, selectedFilePath);
-		});
-		Console.WriteLine($"Selected file uploaded: {done}");
-		Console.WriteLine($"----------------------------------------------------------------------------\r\n");
-
-	}
-
-
-	private static async Task ExtractFramesAsync(IVideoHelper videoHelper, IStorageHelper storageHelper, string containerName, string inputFolder, string extractedFolder)
-	{
-		var blobList = await storageHelper.ListBlobsInFolderWithResizeAsync(containerName, inputFolder, 3, false) ?? [];
-		if (blobList?.Count > 0)
-		{
-			var menuItems = blobList.Select((item, index) => new { Key = index + 1, Value = item.Key }).ToDictionary(x => x.Key, x => x.Value);
-			int chosenDirKey;
-			do
-			{
-				Console.WriteLine($"----------------------------------------------------------------------");
-				foreach (var item in menuItems)
-				{
-					Console.WriteLine($"({item.Key}): {item.Value}");
-				}
-				Console.WriteLine($"(-1): Return to Menu");
-				Console.WriteLine($"----------------------------------------------------------------------");
-				Console.WriteLine("Choose which file to extract frames from...e.g. 1");
-				var userInput = Console.ReadLine();
-				bool isInteger = int.TryParse(userInput, out int result);
-				chosenDirKey = isInteger ? result : -1;
-			} while (!menuItems.ContainsKey(chosenDirKey) && chosenDirKey != -1);
-			if (chosenDirKey == -1)
-				return;
-			string chosenDirValue = menuItems[chosenDirKey];
-
-			if (!string.IsNullOrEmpty(chosenDirValue))
-			{
-
-
-
-				var fileName = Path.GetFileName(chosenDirValue);
-				var folderPath = Path.GetDirectoryName(chosenDirValue).Replace("\\", "/");
-
-				var progressBar = new NovelCsam.Helpers.ProgressBar();
-				var done = false;
-				await progressBar.RunWithProgressBarAsync(async () =>
-				{
-					done = await videoHelper.UploadExtractedFramesToBlobAsync(1, fileName, containerName, folderPath, extractedFolder, fileName);
-				});
-
-				if (done)
-				{
-					Console.WriteLine("************************************************************");
-					Console.WriteLine($"{chosenDirValue} is done extracting!");
-					Console.WriteLine("************************************************************");
-				}
-			}
-		}
-	}
-	private static async Task RunSafetyAnalysisAsync(IVideoHelper videoHelper, IStorageHelper storageHelper, string containerName, string extractedFolder, string resultsFolder)
-	{
-		var dirList = await storageHelper.ListDirectoriesInFolderAsync(containerName, extractedFolder, 2) ?? [];
-		if (dirList?.Count > 0)
-		{
-			int chosenDirKey;
-			do
-			{
-				Console.WriteLine($"----------------------------------------------------------------------");
-				foreach (var dir in dirList)
-				{
-					Console.WriteLine($"({dir.Key}): {dir.Value}");
-				}
-				Console.WriteLine($"(-1): Return to Menu");
-				Console.WriteLine($"----------------------------------------------------------------------");
-				Console.WriteLine("Choose which directory...e.g. 1");
-				var userInput = Console.ReadLine();
-				bool isInteger = int.TryParse(userInput, out int result);
-				chosenDirKey = isInteger ? result : -1;
-			} while (!dirList.ContainsKey(chosenDirKey) && chosenDirKey != -1);
-			if (chosenDirKey == -1)
-				return;
-			string chosenDirValue = dirList[chosenDirKey];
-
-			if (!string.IsNullOrEmpty(chosenDirValue))
-			{
-
-				var progressBar = new NovelCsam.Helpers.ProgressBar();
-				var runId = "";
-				await progressBar.RunWithProgressBarAsync(async () =>
-				{
-					runId = await videoHelper.UploadFrameResultsAsync(containerName, chosenDirValue, resultsFolder, true);
-				});
-
-				if (!string.IsNullOrEmpty(runId))
-				{
-					Console.WriteLine("****************************************************");
-					Console.WriteLine($"{chosenDirValue} is done running! RunId: {runId}");
-					Console.WriteLine("****************************************************");
-				}
-			}
-		}
-		else
-		{
-			Console.WriteLine("There are no directories containing images for processing. \r\n" +
-				"Try extracting some frames or uploading some images.");
-		}
-	}
-
-	private static async Task ExportRunAsync(IVideoHelper videoHelper, IStorageHelper storageHelper, IAzureSQLHelper sqlHelper, string containerName, string extractedFolder, string resultsFolder)
-	{
-		var dirList = await storageHelper.ListDirectoriesInFolderAsync(containerName, extractedFolder, 2) ?? [];
-		if (dirList?.Count > 0)
-		{
-			int chosenDirKey;
-			do
-			{
-				Console.WriteLine($"----------------------------------------------------------------------");
-				foreach (var dir in dirList)
-				{
-					Console.WriteLine($"({dir.Key}): {dir.Value}");
-				}
-				Console.WriteLine($"(-1): Return to Menu");
-				Console.WriteLine($"----------------------------------------------------------------------");
-				Console.WriteLine("Choose which directory...e.g. 1");
-				var userInput = Console.ReadLine();
-				bool isInteger = int.TryParse(userInput, out int result);
-				chosenDirKey = isInteger ? result : -1;
-			} while (!dirList.ContainsKey(chosenDirKey) && chosenDirKey != -1);
-			if (chosenDirKey == -1)
-				return;
-			string chosenDirValue = dirList[chosenDirKey];
-
-			if (!string.IsNullOrEmpty(chosenDirValue))
-			{
-				var records = await sqlHelper.GetFrameResultWithLevelsAsync(chosenDirValue);
-				if (records?.Count != 0)
-				{
-					var csvExporter = new CsvExporter();
-					Console.WriteLine("Enter your export file name..e.g. output.csv");
-					var userInput = Console.ReadLine();
-
-					if (records == null || userInput == null)
-					{
-						throw new Exception("Records and/or UserInput is null");
-					}
-
-					var progressBar = new NovelCsam.Helpers.ProgressBar();
-					await progressBar.RunWithProgressBarAsync(async () =>
-					{
-						await csvExporter.ExportToCsvAsync(records, userInput);
-
-					});
-
-					Console.WriteLine("****************************************************");
-					Console.WriteLine($"{chosenDirValue} is done exporting!");
-					Console.WriteLine("****************************************************");
-				}
-			}
-		}
-		else
-		{
-			Console.WriteLine("There are no directories containing images for processing. \r\n" +
-				"Try extracting some frames or uploading some images.");
-		}
-	}
+	#endregion
 }

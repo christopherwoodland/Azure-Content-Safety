@@ -26,7 +26,7 @@
 			Console.WriteLine();
 		}
 
-		private void DrawProgressBar(int percent)
+		private static void DrawProgressBar(int percent)
 		{
 			const int barWidth = 50;
 			int progress = (int)((percent / 100.0) * barWidth);

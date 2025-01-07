@@ -98,60 +98,6 @@
 			return runId;
 		}
 
-		//public async Task<string> UploadFrameResultsAsync(string containerName, string containerFolderPath, string containerFolderPathResults, bool withBase64ofImage = false)
-		//{
-		//	var list = await _sth.ListBlobsInFolderWithResizeAsync(containerName, containerFolderPath, 3);
-		//	var runId = Guid.NewGuid().ToString();
-		//	var runDateTime = DateTime.UtcNow;
-
-		//	foreach (var item in list)
-		//	{
-		//		var air = await GetContentSafteyDetailsAsync(item.Value);
-		//		var summary = await SummarizeImageAsync(item.Value, "Can you do a detail analysis and tell me all the minute details about this image. Use no more than 450 words!!!");
-		//		var childYesNo = await SummarizeImageAsync(item.Value, "Is there a younger person or child in this image? If you can't make a determination ANSWER No, ONLY ANSWER Yes or No!!");
-		//		var md5Hash = CreateMD5Hash(item.Value);
-
-		//		var newItem = new FrameResult
-		//		{
-		//			MD5Hash = md5Hash,
-		//			Summary = summary,
-		//			RunId = runId,
-		//			Id = Guid.NewGuid().ToString(),
-		//			Frame = item.Key,
-		//			ChildYesNo = childYesNo,
-		//			ImageBase64 = withBase64ofImage ? ConvertToBase64(item.Value) : "",
-		//			RunDateTime = runDateTime
-		//		};
-
-		//		if (air != null)
-		//		{
-		//			foreach (var citem in air.CategoriesAnalysis)
-		//			{
-		//				switch (citem.Category.ToString().ToLowerInvariant())
-		//				{
-		//					case HATE:
-		//						newItem.Hate = (int)citem.Severity;
-		//						break;
-		//					case SELF_HARM:
-		//						newItem.SelfHarm = (int)citem.Severity;
-		//						break;
-		//					case VIOLENCE:
-		//						newItem.Violence = (int)citem.Severity;
-		//						break;
-		//					case SEXUAL:
-		//						newItem.Sexual = (int)citem.Severity;
-		//						break;
-		//				}
-		//			}
-		//		}
-
-		//		await _ash.CreateFrameResult(newItem);
-		//		await _ash.InsertBase64(newItem);
-		//	}
-
-		//	return runId;
-		//}
-
 		public string ConvertToBase64(BinaryData imageData)
 		{
 			return Convert.ToBase64String(imageData.ToArray());

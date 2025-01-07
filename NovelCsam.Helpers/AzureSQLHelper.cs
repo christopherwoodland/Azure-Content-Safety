@@ -5,21 +5,17 @@ namespace NovelCsam.Helpers
 		#region Private Fields
 		private readonly string _connectionString;
 		private readonly ILogHelper _logHelper;
-
 		#endregion
 
 		#region Constructor
-
 		public AzureSQLHelper(ILogHelper logHelper)
 		{
 			_logHelper = logHelper;
 			_connectionString = Environment.GetEnvironmentVariable("AZURE_SQL_CONNECTION_STRING") ?? "";
 		}
-
 		#endregion
 
 		#region Public Methods
-
 		public async Task<IFrameResult?> CreateFrameResult(IFrameResult item)
 		{
 			string query = @"
@@ -71,67 +67,67 @@ namespace NovelCsam.Helpers
 
 			return await ExecuteNonQueryAsync(query, item);
 		}
+
 		public async Task<List<IFrameDetailResult>?> GetFrameResultWithLevelsAsync(string frameId)
 		{
 			string query = @"
-    DECLARE @inputString NVARCHAR(MAX) = @FrameId;
+				DECLARE @inputString NVARCHAR(MAX) = @FrameId;
 
-    WITH SplitStrings AS
-    (
-        SELECT value, ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS PartNumber
-        FROM STRING_SPLIT(@inputString, '/')
-    ),
-    FirstThreeParts AS
-    (
-        SELECT 
-            STRING_AGG(value, '/') WITHIN GROUP (ORDER BY PartNumber) AS FirstThreeParts
-        FROM SplitStrings
-        WHERE PartNumber <= 3
-    )
-    SELECT 
-        *,
-        CASE 
-            WHEN Hate >= 0 AND Hate <= 1 THEN 'none'
-            WHEN Hate >= 2 AND Hate <= 3 THEN 'low'
-            WHEN Hate >= 4 AND Hate <= 5 THEN 'medium'
-            WHEN Hate >= 6 THEN 'high'
-        END AS HateLevel,
-        SelfHarm,
-        CASE 
-            WHEN SelfHarm >= 0 AND SelfHarm <= 1 THEN 'none'
-            WHEN SelfHarm >= 2 AND SelfHarm <= 3 THEN 'low'
-            WHEN SelfHarm >= 4 AND SelfHarm <= 5 THEN 'medium'
-            WHEN SelfHarm >= 6 THEN 'high'
-        END AS SelfHarmLevel,
-        Violence,
-        CASE 
-            WHEN Violence >= 0 AND Violence <= 1 THEN 'none'
-            WHEN Violence >= 2 AND Violence <= 3 THEN 'low'
-            WHEN Violence >= 4 AND Violence <= 5 THEN 'medium'
-            WHEN Violence >= 6 THEN 'high'
-        END AS ViolenceLevel,
-        Sexual,
-        CASE 
-            WHEN Sexual >= 0 AND Sexual <= 1 THEN 'none'
-            WHEN Sexual >= 2 AND Sexual <= 3 THEN 'low'
-            WHEN Sexual >= 4 AND Sexual <= 5 THEN 'medium'
-            WHEN Sexual >= 6 THEN 'high'
-        END AS SexualLevel,
-        RunDateTime
-    FROM 
-        FrameResults
-    WHERE 
-        Frame LIKE (SELECT FirstThreeParts + '%'
-                    FROM FirstThreeParts);";
+				WITH SplitStrings AS
+				(
+					SELECT value, ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS PartNumber
+					FROM STRING_SPLIT(@inputString, '/')
+				),
+				FirstThreeParts AS
+				(
+					SELECT 
+						STRING_AGG(value, '/') WITHIN GROUP (ORDER BY PartNumber) AS FirstThreeParts
+					FROM SplitStrings
+					WHERE PartNumber <= 3
+				)
+				SELECT 
+					*,
+					CASE 
+						WHEN Hate >= 0 AND Hate <= 1 THEN 'none'
+						WHEN Hate >= 2 AND Hate <= 3 THEN 'low'
+						WHEN Hate >= 4 AND Hate <= 5 THEN 'medium'
+						WHEN Hate >= 6 THEN 'high'
+					END AS HateLevel,
+					SelfHarm,
+					CASE 
+						WHEN SelfHarm >= 0 AND SelfHarm <= 1 THEN 'none'
+						WHEN SelfHarm >= 2 AND SelfHarm <= 3 THEN 'low'
+						WHEN SelfHarm >= 4 AND SelfHarm <= 5 THEN 'medium'
+						WHEN SelfHarm >= 6 THEN 'high'
+					END AS SelfHarmLevel,
+					Violence,
+					CASE 
+						WHEN Violence >= 0 AND Violence <= 1 THEN 'none'
+						WHEN Violence >= 2 AND Violence <= 3 THEN 'low'
+						WHEN Violence >= 4 AND Violence <= 5 THEN 'medium'
+						WHEN Violence >= 6 THEN 'high'
+					END AS ViolenceLevel,
+					Sexual,
+					CASE 
+						WHEN Sexual >= 0 AND Sexual <= 1 THEN 'none'
+						WHEN Sexual >= 2 AND Sexual <= 3 THEN 'low'
+						WHEN Sexual >= 4 AND Sexual <= 5 THEN 'medium'
+						WHEN Sexual >= 6 THEN 'high'
+					END AS SexualLevel,
+					RunDateTime
+				FROM 
+					FrameResults
+				WHERE 
+					Frame LIKE (SELECT FirstThreeParts + '%'
+								FROM FirstThreeParts);";
 
 			var parameters = new Dictionary<string, object>
-	{
-		{ "@FrameId", frameId }
-	};
+			{
+				{ "@FrameId", frameId }
+			};
 
 			return await ExecuteReaderAsync(query, parameters);
 		}
-
 		#endregion
 
 		#region Private Methods
@@ -181,7 +177,6 @@ namespace NovelCsam.Helpers
 			return results;
 		}
 
-
 		private async Task<IFrameResult?> ExecuteNonQueryAsync(string query, IFrameResult item)
 		{
 			try
@@ -221,7 +216,6 @@ namespace NovelCsam.Helpers
 				return null;
 			}
 		}
-
 		#endregion
 	}
 }

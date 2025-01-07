@@ -7,9 +7,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NovelCsamDetection.Tests", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NovelCsam.Models", "NovelCsam.Models\NovelCsam.Models.csproj", "{B679C4EC-8238-43DC-96A1-E2BC42C1BB8F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NovelCsam.UI.Console", "NovelCsam.UI.Console\NovelCsam.UI.Console.csproj", "{0E0DB500-81EF-479D-B482-46F43F262056}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NovelCsam.UI.Console", "NovelCsam.UI.Console\NovelCsam.UI.Console.csproj", "{0E0DB500-81EF-479D-B482-46F43F262056}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NovelCsam.Helpers", "NovelCsam.Helpers\NovelCsam.Helpers.csproj", "{37257163-551C-49D4-9EDD-E50AB5AB656F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NovelCsam.Helpers", "NovelCsam.Helpers\NovelCsam.Helpers.csproj", "{37257163-551C-49D4-9EDD-E50AB5AB656F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
