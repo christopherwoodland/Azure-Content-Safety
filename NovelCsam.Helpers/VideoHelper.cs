@@ -42,7 +42,9 @@
 			string path = isImages ? $"{containerFolderPath}/{customName ?? "images"}/{timestamp}/{containerFolderPostfix}" : $"{containerFolderPath}/{Path.GetFileName(sourceFileNameOrPath)}/{timestamp}/{containerFolderPostfix}";
 			return await _sth.UploadFileAsync(containerName, path, sourceFileNameOrPath);
 		}
-		public async Task<string> UploadFrameResultsAsync(string containerName, string containerFolderPath, string containerFolderPathResults, bool withBase64ofImage = false)
+		public async Task<string> UploadFrameResultsAsync(string containerName, 
+			string containerFolderPath, string containerFolderPathResults, bool withBase64ofImage = false, 
+			bool getSummaryB = true, bool getChildYesNoB = true)
 		{
 			var list = await _sth.ListBlobsInFolderWithResizeAsync(containerName, containerFolderPath, 3);
 			var runId = Guid.NewGuid().ToString();
@@ -51,8 +53,9 @@
 			var tasks = list.Select(async item =>
 			{
 				var air = await GetContentSafteyDetailsAsync(item.Value);
-				var summary = await SummarizeImageAsync(item.Value, "Can you do a detail analysis and tell me all the minute details about this image. Use no more than 450 words!!!");
-				var childYesNo = await SummarizeImageAsync(item.Value, "Is there a younger person or child in this image? If you can't make a determination ANSWER No, ONLY ANSWER Yes or No!!");
+
+				var summary = getSummaryB ? await SummarizeImageAsync(item.Value, "Can you do a detail analysis and tell me all the minute details about this image. Use no more than 450 words!!!"): string.Empty;
+				var childYesNo = getChildYesNoB?  await SummarizeImageAsync(item.Value, "Is there a younger person or child in this image? If you can't make a determination ANSWER No, ONLY ANSWER Yes or No!!") : string.Empty;
 				var md5Hash = CreateMD5Hash(item.Value);
 
 				var newItem = new FrameResult

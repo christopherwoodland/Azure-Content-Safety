@@ -271,11 +271,24 @@
 
 			if (!string.IsNullOrEmpty(chosenDirValue))
 			{
+				Console.WriteLine($"Create a summary for each frame using GPT? (y or n)");
+				var getSummary = Console.ReadLine();
+				var getSummaryB = true;
+				var getChildYesNoB = true;
+				if (!string.IsNullOrEmpty(getSummary) && getSummary.ToLower() != "y")
+					getSummaryB = false;
+				Console.WriteLine($"Idenitify if a child is in the frame using GPT? (y or n)");
+				var getChildYesNo = Console.ReadLine();
+				if (!string.IsNullOrEmpty(getChildYesNo) && getChildYesNo.ToLower() != "y")
+					getChildYesNoB = false;
+
 				var progressBar = new NovelCsam.Helpers.ProgressBar();
 				var runId = "";
 				await progressBar.RunWithProgressBarAsync(async () =>
 				{
-					runId = await videoHelper.UploadFrameResultsAsync(containerName, chosenDirValue, resultsFolder, true);
+					runId = await videoHelper.UploadFrameResultsAsync(containerName, 
+						chosenDirValue, resultsFolder, 
+						true, getSummaryB, getChildYesNoB);
 				});
 
 				if (!string.IsNullOrEmpty(runId))
