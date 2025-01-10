@@ -1,4 +1,13 @@
-﻿namespace NovelCsam.Helpers
+﻿using Newtonsoft.Json;
+using NovelCsam.Models.Orchestration;
+using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text;
+using static Microsoft.ApplicationInsights.MetricDimensionNames.TelemetryContext;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using Xabe.FFmpeg;
+
+namespace NovelCsam.Helpers
 {
 	public class VideoHelper : IVideoHelper
 	{
@@ -8,18 +17,21 @@
 		private readonly IStorageHelper _sth;
 		private readonly IContentSafetyHelper _csh;
 		private readonly IAzureSQLHelper _ash;
+
+		private readonly HttpClient _httpClient;
 		private enum FFMPEG_MODE { VSEG = 0, FSEG = 1 }
 		private const string HATE = "hate";
 		private const string SELF_HARM = "selfharm";
 		private const string VIOLENCE = "violence";
 		private const string SEXUAL = "sexual";
 
-		public VideoHelper(IStorageHelper sth, ILogHelper logHelper, IContentSafetyHelper csh, IAzureSQLHelper ash)
+		public VideoHelper(IStorageHelper sth, ILogHelper logHelper, IContentSafetyHelper csh, IAzureSQLHelper ash, HttpClient httpClient)
 		{
 			_logHelper = logHelper;
 			_sth = sth;
 			_csh = csh;
 			_ash = ash;
+			_httpClient = httpClient;
 			var oaidnm = Environment.GetEnvironmentVariable("OPEN_AI_DEPLOYMENT_NAME") ?? "";
 			var oaikey = Environment.GetEnvironmentVariable("OPEN_AI_KEY") ?? "";
 			var oaiendpoint = Environment.GetEnvironmentVariable("OPEN_AI_ENDPOINT") ?? "";
@@ -99,6 +111,77 @@
 			await Task.WhenAll(tasks);
 
 			return runId;
+		}
+
+
+
+		private async Task<string> CallFunctionHttpStartAsync(string requestBody)
+		{
+			var requestUri = "http://localhost:7092/api/AnalyzeFrames_HttpStart";
+			var content = new StringContent(requestBody, Encoding.UTF8, "application/json");
+
+			try
+			{
+				var response = await _httpClient.PostAsync(requestUri, content);
+				response.EnsureSuccessStatusCode();
+
+				var responseBody = await response.Content.ReadAsStringAsync();
+				return responseBody;
+			}
+			catch (HttpRequestException e)
+			{
+				// Handle exception
+				Console.WriteLine($"Request error: {e.Message}");
+				throw;
+			}
+		}
+
+		private async Task<string> CallFunctionHttpStatusAsync(string url)
+		{
+			var requestUri = url;
+			
+			try
+			{
+				var response = await _httpClient.GetAsync(requestUri);
+				response.EnsureSuccessStatusCode();
+
+				var responseBody = await response.Content.ReadAsStringAsync();
+				return responseBody;
+			}
+			catch (HttpRequestException e)
+			{
+				// Handle exception
+				Console.WriteLine($"Request error: {e.Message}");
+				throw;
+			}
+		}
+
+		public async Task<string> UploadFrameResultsDurableFunctionAsync(string containerName,
+		string containerFolderPath, string containerFolderPathResults, bool withBase64ofImage = false,
+		bool getSummaryB = true, bool getChildYesNoB = true)
+		{
+			var item = new
+			{
+				ImageBase64ToDB = withBase64ofImage,
+				GetSummary = getSummaryB,
+				GetChildYesNo = getChildYesNoB,
+				ContainerName = containerName,
+				ContainerDirectory = containerFolderPath
+			};
+			var ret = await CallFunctionHttpStartAsync(JsonConvert.SerializeObject(item));
+			DurableTaskInstance instance = JsonConvert.DeserializeObject<DurableTaskInstance>(ret);
+			var status = await CallFunctionHttpStatusAsync(instance.StatusQueryGetUri);
+			OrchestrationStatus statusInstnace = JsonConvert.DeserializeObject<OrchestrationStatus>(status);
+			do
+			{
+				//Keep checking while the status is Running.
+				await Task.Delay(3000);
+
+				status = await CallFunctionHttpStatusAsync(instance.StatusQueryGetUri);
+				statusInstnace = JsonConvert.DeserializeObject<OrchestrationStatus>(status);
+			} while (statusInstnace.RuntimeStatus != "Completed" && statusInstnace.RuntimeStatus != "Failed" && statusInstnace.RuntimeStatus != "Terminated" && statusInstnace.RuntimeStatus != "Pending" && statusInstnace.RuntimeStatus != "Suspended" && statusInstnace.RuntimeStatus != "ContinuedAsNew" && statusInstnace.RuntimeStatus != "Canceled");
+
+			return statusInstnace.Output.ToString() ?? "";
 		}
 
 		public string ConvertToBase64(BinaryData imageData)
