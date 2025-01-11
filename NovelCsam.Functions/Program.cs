@@ -21,7 +21,8 @@ var envVariables = new Dictionary<string, string>
 			{ "OPEN_AI_KEY", configuration["Azure:OpenAiKey"] },
 			{ "OPEN_AI_ENDPOINT", configuration["Azure:OpenAiEndpoint"] },
 			{ "OPEN_AI_MODEL", configuration["Azure:OpenAiModel"] },
-			{ "APP_INSIGHTS_CONNECTION_STRING", configuration["Azure:AppInsightsConnectionString"] }
+			{ "APP_INSIGHTS_CONNECTION_STRING", configuration["Azure:AppInsightsConnectionString"] },
+			{ "ANALYZE_FRAME_AZURE_FUNCTION_URL", configuration["Azure:AnalyzeFrameAzureFunctionUrl"] }
 		};
 foreach (var envVariable in envVariables)
 {

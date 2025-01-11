@@ -1,13 +1,3 @@
-using System;
-using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.Azure.Functions.Worker.Http;
-using Microsoft.Extensions.Logging;
-using Polly;
-using Polly.Retry;
-using NovelCsam.Models.Orchestration;
-using System.Net;
-
 namespace NovelCsam.Functions.Functions
 {
 	public class AnalyzeFrame
@@ -58,7 +48,7 @@ namespace NovelCsam.Functions.Functions
 		}
 
 		[Function("AnalyzeFrame")]
-		public async Task<bool> RunAnalyzeFrameAsync([ActivityTrigger] AnalyzeFrameOrchestrationModel item, FunctionContext executionContext)
+		public async Task<string> RunAnalyzeFrameAsync([ActivityTrigger] AnalyzeFrameOrchestrationModel item, FunctionContext executionContext)
 		{
 			try
 			{
@@ -105,12 +95,12 @@ namespace NovelCsam.Functions.Functions
 
 				await _ash.CreateFrameResult(newItem);
 				await _ash.InsertBase64(newItem);
-				return true;
+				return item.RunId;
 			}
 			catch (Exception ex)
 			{
 				_logHelper.LogException($"An error occurred when processing an image: {ex.Message}", nameof(AnalyzeFrame), nameof(RunAnalyzeFrameAsync), ex);
-				return false;
+				return "";
 			}
 		}
 	}

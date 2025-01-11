@@ -1,13 +1,4 @@
-﻿using Newtonsoft.Json;
-using NovelCsam.Models.Orchestration;
-using System.Net.Http;
-using System.Security.Cryptography;
-using System.Text;
-using static Microsoft.ApplicationInsights.MetricDimensionNames.TelemetryContext;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using Xabe.FFmpeg;
-
-namespace NovelCsam.Helpers
+﻿namespace NovelCsam.Helpers
 {
 	public class VideoHelper : IVideoHelper
 	{
@@ -24,9 +15,11 @@ namespace NovelCsam.Helpers
 		private const string SELF_HARM = "selfharm";
 		private const string VIOLENCE = "violence";
 		private const string SEXUAL = "sexual";
+		private string _requestUri = "";
 
 		public VideoHelper(IStorageHelper sth, ILogHelper logHelper, IContentSafetyHelper csh, IAzureSQLHelper ash, HttpClient httpClient)
 		{
+			_requestUri = Environment.GetEnvironmentVariable("ANALYZE_FRAME_AZURE_FUNCTION_URL") ?? "";
 			_logHelper = logHelper;
 			_sth = sth;
 			_csh = csh;
@@ -54,8 +47,8 @@ namespace NovelCsam.Helpers
 			string path = isImages ? $"{containerFolderPath}/{customName ?? "images"}/{timestamp}/{containerFolderPostfix}" : $"{containerFolderPath}/{Path.GetFileName(sourceFileNameOrPath)}/{timestamp}/{containerFolderPostfix}";
 			return await _sth.UploadFileAsync(containerName, path, sourceFileNameOrPath);
 		}
-		public async Task<string> UploadFrameResultsAsync(string containerName, 
-			string containerFolderPath, string containerFolderPathResults, bool withBase64ofImage = false, 
+		public async Task<string> UploadFrameResultsAsync(string containerName,
+			string containerFolderPath, string containerFolderPathResults, bool withBase64ofImage = false,
 			bool getSummaryB = true, bool getChildYesNoB = true)
 		{
 			var list = await _sth.ListBlobsInFolderWithResizeAsync(containerName, containerFolderPath, 3);
@@ -66,8 +59,8 @@ namespace NovelCsam.Helpers
 			{
 				var air = await GetContentSafteyDetailsAsync(item.Value);
 
-				var summary = getSummaryB ? await SummarizeImageAsync(item.Value, "Can you do a detail analysis and tell me all the minute details about this image. Use no more than 450 words!!!"): string.Empty;
-				var childYesNo = getChildYesNoB?  await SummarizeImageAsync(item.Value, "Is there a younger person or child in this image? If you can't make a determination ANSWER No, ONLY ANSWER Yes or No!!") : string.Empty;
+				var summary = getSummaryB ? await SummarizeImageAsync(item.Value, "Can you do a detail analysis and tell me all the minute details about this image. Use no more than 450 words!!!") : string.Empty;
+				var childYesNo = getChildYesNoB ? await SummarizeImageAsync(item.Value, "Is there a younger person or child in this image? If you can't make a determination ANSWER No, ONLY ANSWER Yes or No!!") : string.Empty;
 				var md5Hash = CreateMD5Hash(item.Value);
 
 				var newItem = new FrameResult
@@ -117,29 +110,27 @@ namespace NovelCsam.Helpers
 
 		private async Task<string> CallFunctionHttpStartAsync(string requestBody)
 		{
-			var requestUri = "http://localhost:7092/api/AnalyzeFrames_HttpStart";
-			var content = new StringContent(requestBody, Encoding.UTF8, "application/json");
-
 			try
 			{
-				var response = await _httpClient.PostAsync(requestUri, content);
+				var content = new StringContent(requestBody, Encoding.UTF8, "application/json");
+				var response = await _httpClient.PostAsync(_requestUri, content);
 				response.EnsureSuccessStatusCode();
 
 				var responseBody = await response.Content.ReadAsStringAsync();
 				return responseBody;
 			}
-			catch (HttpRequestException e)
+			catch (HttpRequestException ex)
 			{
 				// Handle exception
-				Console.WriteLine($"Request error: {e.Message}");
-				throw;
+				_logHelper.LogException($"An error occurred during CallFunctionHttpStartAsync: {ex.Message}", nameof(VideoHelper), nameof(CallFunctionHttpStartAsync), ex);
+				return "";
 			}
 		}
 
 		private async Task<string> CallFunctionHttpStatusAsync(string url)
 		{
 			var requestUri = url;
-			
+
 			try
 			{
 				var response = await _httpClient.GetAsync(requestUri);
@@ -148,17 +139,17 @@ namespace NovelCsam.Helpers
 				var responseBody = await response.Content.ReadAsStringAsync();
 				return responseBody;
 			}
-			catch (HttpRequestException e)
+			catch (HttpRequestException ex)
 			{
 				// Handle exception
-				Console.WriteLine($"Request error: {e.Message}");
-				throw;
+				_logHelper.LogException($"An error occurred during CallFunctionHttpStatusAsync: {ex.Message}", nameof(VideoHelper), nameof(CallFunctionHttpStatusAsync), ex);
+				return "";
 			}
 		}
 
 		public async Task<string> UploadFrameResultsDurableFunctionAsync(string containerName,
 		string containerFolderPath, string containerFolderPathResults, bool withBase64ofImage = false,
-		bool getSummaryB = true, bool getChildYesNoB = true)
+		bool getSummaryB = true, bool getChildYesNoB = true, string runId = "")
 		{
 			var item = new
 			{
@@ -166,7 +157,8 @@ namespace NovelCsam.Helpers
 				GetSummary = getSummaryB,
 				GetChildYesNo = getChildYesNoB,
 				ContainerName = containerName,
-				ContainerDirectory = containerFolderPath
+				ContainerDirectory = containerFolderPath,
+				RunId = runId
 			};
 			var ret = await CallFunctionHttpStartAsync(JsonConvert.SerializeObject(item));
 			DurableTaskInstance instance = JsonConvert.DeserializeObject<DurableTaskInstance>(ret);
@@ -181,7 +173,7 @@ namespace NovelCsam.Helpers
 				statusInstnace = JsonConvert.DeserializeObject<OrchestrationStatus>(status);
 			} while (statusInstnace.RuntimeStatus != "Completed" && statusInstnace.RuntimeStatus != "Failed" && statusInstnace.RuntimeStatus != "Terminated" && statusInstnace.RuntimeStatus != "Pending" && statusInstnace.RuntimeStatus != "Suspended" && statusInstnace.RuntimeStatus != "ContinuedAsNew" && statusInstnace.RuntimeStatus != "Canceled");
 
-			return statusInstnace.Output.ToString() ?? "";
+			return statusInstnace.Input.ToString() ?? "";
 		}
 
 		public string ConvertToBase64(BinaryData imageData)

@@ -23,3 +23,8 @@ global using Microsoft.DurableTask.Client;
 global using Microsoft.Extensions.AI;
 global using Microsoft.Extensions.Logging;
 global using NovelCsam.Helpers;
+
+global using Polly;
+global using Polly.Retry;
+global using NovelCsam.Models.Orchestration;
+global using System.Net;

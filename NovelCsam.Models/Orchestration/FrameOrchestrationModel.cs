@@ -14,5 +14,8 @@ namespace NovelCsam.Models.Orchestration
         public bool GetSummary { get; set; }
         [JsonProperty(PropertyName = "getChildYesNo")]
         public bool GetChildYesNo { get; set; }
-    }
+
+		[JsonProperty(PropertyName = "runId")]
+		public string RunId{ get; set; }
+	}
 }

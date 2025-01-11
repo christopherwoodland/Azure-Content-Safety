@@ -12,6 +12,7 @@ global using Microsoft.Data.SqlClient;
 global using Microsoft.Extensions.Logging;
 global using Microsoft.SemanticKernel;
 global using Microsoft.SemanticKernel.ChatCompletion;
+global using Newtonsoft.Json;
 global using NovelCsam.Helpers.Interfaces;
 global using NovelCsam.Models;
 global using NovelCsam.Models.Interfaces;
@@ -26,7 +27,9 @@ global using System.IO;
 global using System.Net;
 global using System.Net.Http;
 global using System.Security.Cryptography;
+global using System.Text;
 global using System.Threading.Tasks;
 global using Xabe.FFmpeg;
 global using SqlConnection = Microsoft.Data.SqlClient.SqlConnection;
 global using SqlException = Microsoft.Data.SqlClient.SqlException;
+

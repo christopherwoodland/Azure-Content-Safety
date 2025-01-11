@@ -32,23 +32,18 @@ namespace NovelCsam.Functions.Functions
 						GetChildYesNo = fom.GetChildYesNo,
 						ContainerDirectory = fom.ContainerDirectory,
 						ContainerName = fom.ContainerName,
-						ImageBase64ToDB = fom.ImageBase64ToDB
+						ImageBase64ToDB = fom.ImageBase64ToDB,
+						RunId = fom.RunId
 					};
 
-					//var frames = await _sth.ListBlobsInFolderWithResizeAsync(fom.ContainerName, fom.ContainerDirectory, 3);
 					var frames = await context.CallActivityAsync<Dictionary<string, CustomBinaryData>>("ListBlobs", new { fom.ContainerName, fom.ContainerDirectory });
-
-
-					var runId = Guid.NewGuid().ToString();
 					var runDateTime = DateTime.UtcNow;
-					afm.RunId = runId;
 					afm.RunDateTime = runDateTime;
+
 					var withBase64ofImage = fom.ImageBase64ToDB;
 					var getSummaryB = fom.GetSummary;
 					var getChildYesNoB = fom.GetChildYesNo;
 					var tasks = new List<Task<bool>>();
-
-
 
 					// Fan-Out: Start multiple tasks in parallel to resize the image in different resolutions
 					foreach (var frame in frames)
@@ -61,7 +56,7 @@ namespace NovelCsam.Functions.Functions
 					// Wait for all tasks to complete (Fan-In)
 					await Task.WhenAll(tasks);
 
-					return runId;
+					return afm.RunId;
 				}
 				else
 				{

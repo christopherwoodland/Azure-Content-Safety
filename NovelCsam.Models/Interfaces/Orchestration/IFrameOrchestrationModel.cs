@@ -12,6 +12,7 @@
         bool GetSummary { get; set; }
         [JsonProperty(PropertyName = "getChildYesNo")]
         bool GetChildYesNo { get; set; }
-
-    }
+		[JsonProperty(PropertyName = "runId")]
+		string RunId { get; set; }
+	}
 }

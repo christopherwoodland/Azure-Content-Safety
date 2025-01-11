@@ -105,7 +105,7 @@
 		{
 			options.ConnectionString = Environment.GetEnvironmentVariable("APP_INSIGHTS_CONNECTION_STRING");
 		});
-		
+
 		services.AddTransient<IAzureSQLHelper, AzureSQLHelper>();
 		services.AddScoped<ILogHelper, LogHelper>();
 		services.AddScoped<IContentSafetyHelper, ContentSafetyHelper>();
@@ -135,7 +135,8 @@
 			{ "OPEN_AI_KEY", configuration["Azure:OpenAiKey"] },
 			{ "OPEN_AI_ENDPOINT", configuration["Azure:OpenAiEndpoint"] },
 			{ "OPEN_AI_MODEL", configuration["Azure:OpenAiModel"] },
-			{ "APP_INSIGHTS_CONNECTION_STRING", configuration["Azure:AppInsightsConnectionString"] }
+			{ "APP_INSIGHTS_CONNECTION_STRING", configuration["Azure:AppInsightsConnectionString"] },
+			{ "ANALYZE_FRAME_AZURE_FUNCTION_URL", configuration["Azure:AnalyzeFrameAzureFunctionUrl"] }
 		};
 		foreach (var envVariable in envVariables)
 		{
@@ -288,8 +289,8 @@
 				var runId = "";
 				await progressBar.RunWithProgressBarAsync(async () =>
 				{
-					runId = await videoHelper.UploadFrameResultsAsync(containerName, 
-						chosenDirValue, resultsFolder, 
+					runId = await videoHelper.UploadFrameResultsAsync(containerName,
+						chosenDirValue, resultsFolder,
 						true, getSummaryB, getChildYesNoB);
 				});
 
@@ -347,14 +348,13 @@
 					getChildYesNoB = false;
 
 				var progressBar = new NovelCsam.Helpers.ProgressBar();
-				var runId = "";
+				var runId = Guid.NewGuid().ToString();
 				await progressBar.RunWithProgressBarAsync(async () =>
 				{
-				
 
-					runId = await videoHelper.UploadFrameResultsDurableFunctionAsync(containerName,
+					await videoHelper.UploadFrameResultsDurableFunctionAsync(containerName,
 						chosenDirValue, resultsFolder,
-						true, getSummaryB, getChildYesNoB);
+						true, getSummaryB, getChildYesNoB, runId);
 				});
 
 				if (!string.IsNullOrEmpty(runId))
@@ -374,7 +374,7 @@
 	#endregion
 
 	#region Export Methods
-	private static async Task ExportRunAsync(IVideoHelper videoHelper, IStorageHelper storageHelper, IAzureSQLHelper sqlHelper, 
+	private static async Task ExportRunAsync(IVideoHelper videoHelper, IStorageHelper storageHelper, IAzureSQLHelper sqlHelper,
 		string containerName, string extractedFolder, string resultsFolder, ICsvExporter csvHelper)
 	{
 		var dirList = await storageHelper.ListDirectoriesInFolderAsync(containerName, extractedFolder, 2) ?? [];
@@ -426,7 +426,8 @@
 						Console.WriteLine($"{chosenDirValue} is done exporting!");
 						Console.WriteLine("****************************************************");
 					}
-					else {
+					else
+					{
 
 						Console.WriteLine("****************************************************");
 						Console.WriteLine($"An error occured when exporting to {chosenDirValue}!");
