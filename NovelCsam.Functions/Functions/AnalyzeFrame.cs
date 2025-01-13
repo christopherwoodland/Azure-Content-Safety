@@ -92,7 +92,8 @@ namespace NovelCsam.Functions.Functions
 						}
 					}
 				}
-
+				summary = summary.Contains("429") ? "" : summary;
+				childYesNo = childYesNo.Contains("429") ? "": childYesNo;
 				await _ash.CreateFrameResult(newItem);
 				await _ash.InsertBase64(newItem);
 				return item.RunId;

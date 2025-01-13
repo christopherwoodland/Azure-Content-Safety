@@ -1,6 +1,3 @@
-using NovelCsam.Models.Orchestration;
-using System.Data;
-
 namespace NovelCsam.Functions.Functions
 {
 	public class ListBlobs
