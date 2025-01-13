@@ -1,37 +1,31 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+﻿<Project Sdk="Microsoft.NET.Sdk;Microsoft.NET.Sdk.Publish">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-	  
     <TargetFramework>net8.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-	  <UseWindowsForms>true</UseWindowsForms>
+    <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="CsvHelper" Version="33.0.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.0" />
     <PackageReference Include="System.Windows.Extensions" Version="9.0.0" />
-	  <Import Include="System.Data" />
-	  <Import Include="System.Drawing" />
-	  <Import Include="System.Windows.Forms" />
-	  <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
-	  <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
-	  <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0" />
-	  <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.22.0" />
+    <Import Include="System.Data" />
+    <Import Include="System.Drawing" />
+    <Import Include="System.Windows.Forms" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0" />
+    <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.22.0" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\NovelCsam.Helpers\NovelCsam.Helpers.csproj" />
-	  <ProjectReference Include="..\NovelCsam.Models\NovelCsam.Models.csproj" />
+    <ProjectReference Include="..\NovelCsam.Models\NovelCsam.Models.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <None Update="appsettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-
 </Project>

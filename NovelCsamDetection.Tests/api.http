@@ -1,4 +1,16 @@
-﻿### Start Extract Job
+﻿### Start Orchestration
+POST http://localhost:7092/api/Function1_HttpStart
+Content-Type: application/json
+{
+  "containerName": "videos",
+  "containerDirectory": "extracted/short.webm/20250109_183426",
+  "imageBase64ToDB": "true",
+  "getSummary": "false",
+  "getChildYesNo": "false",
+}
+
+
+### Start Extract Job
 POST http://localhost:32537/api/jobs/extract
 Content-Type: application/json
 {

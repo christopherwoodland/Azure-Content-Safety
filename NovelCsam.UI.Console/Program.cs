@@ -80,18 +80,19 @@
 		do
 		{
 			Console.WriteLine("Novel CSAM Detection Menu");
-			Console.WriteLine("###############################################");
-			Console.WriteLine("#####..1.) Upload Video to Azure..........#####");
-			Console.WriteLine("#####..2.) Upload Images to Azure.........#####");
-			Console.WriteLine("#####..3.) Extract Frames.................#####");
-			Console.WriteLine("#####..4.) Run Safety Analysis............#####");
-			Console.WriteLine("#####..5.) Export Run.....................#####");
-			Console.WriteLine("#####..X.) Exit...........................#####");
-			Console.WriteLine("###############################################");
+			Console.WriteLine("#######################################################");
+			Console.WriteLine("#####..1.) Upload Video to Azure..................#####");
+			Console.WriteLine("#####..2.) Upload Images to Azure.................#####");
+			Console.WriteLine("#####..3.) Extract Frames.........................#####");
+			Console.WriteLine("#####..4.) Run Safety Analysis....................#####");
+			Console.WriteLine("#####..5.) Export Run.............................#####");
+			Console.WriteLine("#####..6.) Run Safety Analysis (Durable Function) #####");
+			Console.WriteLine("#####..X.) Exit...................................#####");
+			Console.WriteLine("#######################################################");
 
 			Console.WriteLine("Please enter a valid choice 1 - 4, or X to exit");
 			choice = Console.ReadLine()?.ToLower(System.Globalization.CultureInfo.CurrentCulture) ?? "";
-		} while (!new[] { "1", "2", "3", "4", "5", "x" }.Contains(choice));
+		} while (!new[] { "1", "2", "3", "4", "5", "6", "x" }.Contains(choice));
 
 		return choice;
 	}
@@ -111,6 +112,7 @@
 		services.AddScoped<IStorageHelper, StorageHelper>();
 		services.AddScoped<ICsvExporter, CsvExporter>();
 		services.AddTransient<IVideoHelper, VideoHelper>();
+		services.AddScoped<HttpClient>();
 	}
 
 	private static void SetEnvVariables()
@@ -133,7 +135,8 @@
 			{ "OPEN_AI_KEY", configuration["Azure:OpenAiKey"] },
 			{ "OPEN_AI_ENDPOINT", configuration["Azure:OpenAiEndpoint"] },
 			{ "OPEN_AI_MODEL", configuration["Azure:OpenAiModel"] },
-			{ "APP_INSIGHTS_CONNECTION_STRING", configuration["Azure:AppInsightsConnectionString"] }
+			{ "APP_INSIGHTS_CONNECTION_STRING", configuration["Azure:AppInsightsConnectionString"] },
+			{ "ANALYZE_FRAME_AZURE_FUNCTION_URL", configuration["Azure:AnalyzeFrameAzureFunctionUrl"] }
 		};
 		foreach (var envVariable in envVariables)
 		{
@@ -286,9 +289,72 @@
 				var runId = "";
 				await progressBar.RunWithProgressBarAsync(async () =>
 				{
-					runId = await videoHelper.UploadFrameResultsAsync(containerName, 
-						chosenDirValue, resultsFolder, 
+					runId = await videoHelper.UploadFrameResultsAsync(containerName,
+						chosenDirValue, resultsFolder,
 						true, getSummaryB, getChildYesNoB);
+				});
+
+				if (!string.IsNullOrEmpty(runId))
+				{
+					Console.WriteLine("****************************************************");
+					Console.WriteLine($"{chosenDirValue} is done running! RunId: {runId}");
+					Console.WriteLine("****************************************************");
+				}
+			}
+		}
+		else
+		{
+			Console.WriteLine("There are no directories containing images for processing. \r\n" +
+				"Try extracting some frames or uploading some images.");
+		}
+	}
+
+
+	private static async Task RunSafetyAnalysisDurableFunctionAsync(IVideoHelper videoHelper, IStorageHelper storageHelper, string containerName, string extractedFolder, string resultsFolder)
+	{
+		var dirList = await storageHelper.ListDirectoriesInFolderAsync(containerName, extractedFolder, 2) ?? [];
+		if (dirList?.Count > 0)
+		{
+			int chosenDirKey;
+			do
+			{
+				Console.WriteLine($"----------------------------------------------------------------------");
+				foreach (var dir in dirList)
+				{
+					Console.WriteLine($"({dir.Key}): {dir.Value}");
+				}
+				Console.WriteLine($"(-1): Return to Menu");
+				Console.WriteLine($"----------------------------------------------------------------------");
+				Console.WriteLine("Choose which directory...e.g. 1");
+				var userInput = Console.ReadLine();
+				bool isInteger = int.TryParse(userInput, out int result);
+				chosenDirKey = isInteger ? result : -1;
+			} while (!dirList.ContainsKey(chosenDirKey) && chosenDirKey != -1);
+			if (chosenDirKey == -1)
+				return;
+			string chosenDirValue = dirList[chosenDirKey];
+
+			if (!string.IsNullOrEmpty(chosenDirValue))
+			{
+				Console.WriteLine($"Create a summary for each frame using GPT? (y or n)");
+				var getSummary = Console.ReadLine();
+				var getSummaryB = true;
+				var getChildYesNoB = true;
+				if (!string.IsNullOrEmpty(getSummary) && getSummary.ToLower() != "y")
+					getSummaryB = false;
+				Console.WriteLine($"Idenitify if a child is in the frame using GPT? (y or n)");
+				var getChildYesNo = Console.ReadLine();
+				if (!string.IsNullOrEmpty(getChildYesNo) && getChildYesNo.ToLower() != "y")
+					getChildYesNoB = false;
+
+				var progressBar = new NovelCsam.Helpers.ProgressBar();
+				var runId = Guid.NewGuid().ToString();
+				await progressBar.RunWithProgressBarAsync(async () =>
+				{
+
+					await videoHelper.UploadFrameResultsDurableFunctionAsync(containerName,
+						chosenDirValue, resultsFolder,
+						true, getSummaryB, getChildYesNoB, runId);
 				});
 
 				if (!string.IsNullOrEmpty(runId))
@@ -308,7 +374,7 @@
 	#endregion
 
 	#region Export Methods
-	private static async Task ExportRunAsync(IVideoHelper videoHelper, IStorageHelper storageHelper, IAzureSQLHelper sqlHelper, 
+	private static async Task ExportRunAsync(IVideoHelper videoHelper, IStorageHelper storageHelper, IAzureSQLHelper sqlHelper,
 		string containerName, string extractedFolder, string resultsFolder, ICsvExporter csvHelper)
 	{
 		var dirList = await storageHelper.ListDirectoriesInFolderAsync(containerName, extractedFolder, 2) ?? [];
@@ -360,7 +426,8 @@
 						Console.WriteLine($"{chosenDirValue} is done exporting!");
 						Console.WriteLine("****************************************************");
 					}
-					else {
+					else
+					{
 
 						Console.WriteLine("****************************************************");
 						Console.WriteLine($"An error occured when exporting to {chosenDirValue}!");
@@ -441,6 +508,9 @@
 						break;
 					case "5":
 						await ExportRunAsync(videoHelper, storageHelper, sqlHelper, ContainerVideos, ContainerExtracted, ContainerResults, csvHelper);
+						break;
+					case "6":
+						await RunSafetyAnalysisDurableFunctionAsync(videoHelper, storageHelper, ContainerVideos, ContainerExtracted, ContainerResults);
 						break;
 				}
 				choice = PrintMenu();
