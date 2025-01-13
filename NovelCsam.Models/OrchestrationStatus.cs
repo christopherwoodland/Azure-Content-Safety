@@ -1,5 +1,4 @@
-﻿
-public class OrchestrationStatus
+﻿public class OrchestrationStatus
 {
 	public string Name { get; set; }
 	public string InstanceId { get; set; }

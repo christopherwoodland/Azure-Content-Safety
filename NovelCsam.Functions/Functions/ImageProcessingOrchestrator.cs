@@ -3,8 +3,6 @@ using NovelCsam.Models.Orchestration;
 
 namespace NovelCsam.Functions.Functions
 {
-
-
 	public class ImageProcessingOrchestrator
 	{
 		private readonly ILogHelper _logHelper;
