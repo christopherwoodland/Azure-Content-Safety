@@ -362,3 +362,4 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /NovelCsam.UI.Console/appsettings.json
+/NovelCsam.Functions/local.settings.json
