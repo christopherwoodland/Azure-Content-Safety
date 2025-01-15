@@ -171,7 +171,7 @@
 
 				status = await CallFunctionHttpStatusAsync(instance.StatusQueryGetUri);
 				statusInstnace = JsonConvert.DeserializeObject<OrchestrationStatus>(status);
-			} while (statusInstnace.RuntimeStatus != "Completed" && statusInstnace.RuntimeStatus != "Failed" && statusInstnace.RuntimeStatus != "Terminated" && statusInstnace.RuntimeStatus != "Pending" && statusInstnace.RuntimeStatus != "Suspended" && statusInstnace.RuntimeStatus != "ContinuedAsNew" && statusInstnace.RuntimeStatus != "Canceled");
+			} while (string.IsNullOrEmpty(statusInstnace.RuntimeStatus) && statusInstnace.RuntimeStatus != "Completed" && statusInstnace.RuntimeStatus != "Failed" && statusInstnace.RuntimeStatus != "Terminated" && statusInstnace.RuntimeStatus != "Pending" && statusInstnace.RuntimeStatus != "Suspended" && statusInstnace.RuntimeStatus != "ContinuedAsNew" && statusInstnace.RuntimeStatus != "Canceled");
 
 			return statusInstnace.Input.ToString() ?? "";
 		}
