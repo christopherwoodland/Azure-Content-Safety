@@ -51,11 +51,11 @@ The application requires configuration for Azure Storage, Content Safety service
     "OpenAiKey": "your_open_ai_key",
     "OpenAiEndpoint": "your_open_ai_endpoint",
     "OpenAiModel": "your_open_ai_model",
-    "AppInsightsConnectionString": "your_app_insights_connection_string"
+    "AppInsightsConnectionString": "your_app_insights_connection_string",
+    "AnalyzeFrameAzureFunctionUrl": "your_azure_function_url"
   }
 }
 ```
-
 
 ### Configuration Placeholders
 
