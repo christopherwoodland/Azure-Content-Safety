@@ -25,20 +25,26 @@
 			_csh = csh;
 			_ash = ash;
 			_httpClient = httpClient;
-			var oaidnm = Environment.GetEnvironmentVariable("OPEN_AI_DEPLOYMENT_NAME") ?? "";
-			var oaikey = Environment.GetEnvironmentVariable("OPEN_AI_KEY") ?? "";
-			var oaiendpoint = Environment.GetEnvironmentVariable("OPEN_AI_ENDPOINT") ?? "";
-			var oaimodel = Environment.GetEnvironmentVariable("OPEN_AI_MODEL") ?? "";
-			_kernelBuilder = Kernel.CreateBuilder();
 
-			_kernelBuilder.AddAzureOpenAIChatCompletion(
-				deploymentName: oaidnm,
-				apiKey: oaikey,
-				endpoint: oaiendpoint,
-				modelId: oaimodel,
-				serviceId: Guid.NewGuid().ToString());
+			var ioapi = Environment.GetEnvironmentVariable("INVOKE_OPEN_AI");
 
-			_kernel = _kernelBuilder.Build();
+			if (!string.IsNullOrEmpty(ioapi))
+			{
+				var oaidnm = Environment.GetEnvironmentVariable("OPEN_AI_DEPLOYMENT_NAME") ?? "";
+				var oaikey = Environment.GetEnvironmentVariable("OPEN_AI_KEY") ?? "";
+				var oaiendpoint = Environment.GetEnvironmentVariable("OPEN_AI_ENDPOINT") ?? "";
+				var oaimodel = Environment.GetEnvironmentVariable("OPEN_AI_MODEL") ?? "";
+				_kernelBuilder = Kernel.CreateBuilder();
+
+				_kernelBuilder.AddAzureOpenAIChatCompletion(
+					deploymentName: oaidnm,
+					apiKey: oaikey,
+					endpoint: oaiendpoint,
+					modelId: oaimodel,
+					serviceId: Guid.NewGuid().ToString());
+
+				_kernel = _kernelBuilder.Build();
+			}
 		}
 
 		public async Task<string> UploadFileToBlobAsync(string containerName, string containerFolderPath, string sourceFileNameOrPath, string containerFolderPostfix = "", bool isImages = false, string timestampIn = "", string customName = "")
@@ -59,9 +65,15 @@
 			{
 				var air = await GetContentSafteyDetailsAsync(item.Value);
 
-				var summary = getSummaryB ? await SummarizeImageAsync(item.Value, "Can you do a detail analysis and tell me all the minute details about this image. Use no more than 450 words!!!") : string.Empty;
-				var childYesNo = getChildYesNoB ? await SummarizeImageAsync(item.Value, "Is there a younger person or child in this image? If you can't make a determination ANSWER No, ONLY ANSWER Yes or No!!") : string.Empty;
-				var md5Hash = CreateMD5Hash(item.Value);
+				var ioapi = Environment.GetEnvironmentVariable("INVOKE_OPEN_AI");
+				var summary = "";
+				var childYesNo = "";
+				if(!string.IsNullOrEmpty(ioapi))
+				{
+					summary = getSummaryB ? await SummarizeImageAsync(item.Value, "Can you do a detail analysis and tell me all the minute details about this image. Use no more than 450 words!!!") : string.Empty;
+					childYesNo = getChildYesNoB ? await SummarizeImageAsync(item.Value, "Is there a younger person or child in this image? If you can't make a determination ANSWER No, ONLY ANSWER Yes or No!!") : string.Empty;
+				}
+					var md5Hash = CreateMD5Hash(item.Value);
 
 				var newItem = new FrameResult
 				{

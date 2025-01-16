@@ -136,6 +136,7 @@
 			{ "OPEN_AI_ENDPOINT", configuration["Azure:OpenAiEndpoint"] },
 			{ "OPEN_AI_MODEL", configuration["Azure:OpenAiModel"] },
 			{ "APP_INSIGHTS_CONNECTION_STRING", configuration["Azure:AppInsightsConnectionString"] },
+			{ "INVOKE_OPEN_AI", configuration["Azure:InvokeOpenAI"] },
 			{ "ANALYZE_FRAME_AZURE_FUNCTION_URL", configuration["Azure:AnalyzeFrameAzureFunctionUrl"] }
 		};
 		foreach (var envVariable in envVariables)
