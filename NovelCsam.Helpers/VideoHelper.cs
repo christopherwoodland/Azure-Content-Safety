@@ -68,12 +68,12 @@
 
 				var summary = "";
 				var childYesNo = "";
-				if(!string.IsNullOrEmpty(_ioapi) && _ioapi.ToLower() == "true")
+				if (!string.IsNullOrEmpty(_ioapi) && _ioapi.ToLower() == "true")
 				{
 					summary = getSummaryB ? await SummarizeImageAsync(item.Value, "Can you do a detail analysis and tell me all the minute details about this image. Use no more than 450 words!!!") : string.Empty;
 					childYesNo = getChildYesNoB ? await SummarizeImageAsync(item.Value, "Is there a younger person or child in this image? If you can't make a determination ANSWER No, ONLY ANSWER Yes or No!!") : string.Empty;
 				}
-					var md5Hash = CreateMD5Hash(item.Value);
+				var md5Hash = CreateMD5Hash(item.Value);
 
 				var newItem = new FrameResult
 				{
