@@ -17,7 +17,8 @@ namespace NovelCsam.Helpers
 			_retryPolicy = Policy
 				.Handle<SqlException>(ex => ex.Number == -2) // SQL Server timeout error number
 				.Or<SqlException>(ex => ex.Number == 1205) // SQL Server deadlock error number
-				.WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+				.Or<SqlException>(ex => ex.Number == 40613) // SQL Server database unavailable error number
+				.WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(3, retryAttempt)),
 					(exception, timeSpan, retryCount, context) =>
 					{
 						_logHelper.LogInformation($"Retry {retryCount} encountered an error: {exception.Message}. Waiting {timeSpan} before next retry.", nameof(AzureSQLHelper), "Constructor");

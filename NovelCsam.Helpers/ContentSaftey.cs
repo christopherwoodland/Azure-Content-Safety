@@ -17,7 +17,7 @@ namespace NovelCsam.Helpers
 		public async Task<AnalyzeImageResult?> AnalyzeImageAsync(BinaryData inputImage)
 		{
 			const int maxRetries = 3;
-			const int delayMilliseconds = 2000;
+			const int delayMilliseconds = 3000;
 
 			// Define a Polly retry policy
 			var retryPolicy = Policy

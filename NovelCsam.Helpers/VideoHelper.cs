@@ -219,7 +219,7 @@
 		public async Task<string> SummarizeImageAsync(BinaryData imageBytes, string userPrompt)
 		{
 			const int maxRetries = 3;
-			const int delayMilliseconds = 2000;
+			const int delayMilliseconds = 3000;
 
 			var retryPolicy = Policy
 				.Handle<HttpRequestException>(ex => ex.StatusCode == (HttpStatusCode)429)
