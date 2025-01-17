@@ -141,6 +141,12 @@
 		};
 		foreach (var envVariable in envVariables)
 		{
+			if (string.IsNullOrEmpty(envVariable.Value))
+			{
+				Console.WriteLine($"You are missing an Environment Variable value for key, this may/may not be a configuration issue: {envVariable.Key}");
+
+
+			}
 			Environment.SetEnvironmentVariable(envVariable.Key, envVariable.Value);
 		}
 	}
