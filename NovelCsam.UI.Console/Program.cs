@@ -86,7 +86,7 @@
 			Console.WriteLine("#####..3.) Extract Frames.........................#####");
 			Console.WriteLine("#####..4.) Run Safety Analysis....................#####");
 			Console.WriteLine("#####..5.) Export Run.............................#####");
-			Console.WriteLine("#####..6.) Run Safety Analysis (Durable Function) #####");
+			//Console.WriteLine("#####..6.) Run Safety Analysis (Durable Function) #####");
 			Console.WriteLine("#####..X.) Exit...................................#####");
 			Console.WriteLine("#######################################################");
 

@@ -58,14 +58,24 @@
 			string containerFolderPath, string containerFolderPathResults, bool withBase64ofImage = false,
 			bool getSummaryB = true, bool getChildYesNoB = true)
 		{
+
+			Console.WriteLine($"\n----------------------------------------------------------------------");
+			Console.WriteLine($"Pulling list of records....");
+			Console.WriteLine($"----------------------------------------------------------------------\n");
 			var list = await _sth.ListBlobsInFolderWithResizeAsync(containerName, containerFolderPath, 3);
+
+			//This could be done better/different
+			int totalCnt = list.Count;
+			int cnt = 1;
+			Console.WriteLine($"\n----------------------------------------------------------------------");
+			Console.WriteLine($"Total number of records to process: {totalCnt}");
+			Console.WriteLine($"----------------------------------------------------------------------\n");
 			var runId = Guid.NewGuid().ToString();
 			var runDateTime = DateTime.UtcNow;
 
 			var tasks = list.Select(async item =>
 			{
 				var air = await GetContentSafteyDetailsAsync(item.Value);
-
 				var summary = "";
 				var childYesNo = "";
 				if (!string.IsNullOrEmpty(_ioapi) && _ioapi.ToLower() == "true")
@@ -111,6 +121,12 @@
 
 				await _ash.CreateFrameResult(newItem);
 				await _ash.InsertBase64(newItem);
+				//This could be done better/different
+				Console.WriteLine($"\n----------------------------------------------------------------------\n");
+				Console.WriteLine($"Recorded processed: {item.Key}");
+				Console.WriteLine($"Total number of records processed: {cnt}/{totalCnt}");
+				Console.WriteLine($"\n----------------------------------------------------------------------\n");
+				cnt++;
 			});
 
 			await Task.WhenAll(tasks);
