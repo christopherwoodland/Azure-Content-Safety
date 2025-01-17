@@ -79,7 +79,7 @@
 		string choice;
 		do
 		{
-			Console.WriteLine("Novel CSAM Detection Menu");
+			Console.WriteLine("\n\n\n\nNovel CSAM Detection Menu");
 			Console.WriteLine("#######################################################");
 			Console.WriteLine("#####..1.) Upload Video to Azure..................#####");
 			Console.WriteLine("#####..2.) Upload Images to Azure.................#####");
@@ -143,7 +143,9 @@
 		{
 			if (string.IsNullOrEmpty(envVariable.Value))
 			{
-				Console.WriteLine($"You are missing an Environment Variable value for key, this may/may not be a configuration issue: {envVariable.Key}");
+				Console.WriteLine($"**********************************************************************");
+				Console.WriteLine($"You are missing an Environment Variable value for key {envVariable.Key}.\nThis may/may not be a configuration issue.");
+				Console.WriteLine($"**********************************************************************");
 
 
 			}
