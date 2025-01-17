@@ -16,6 +16,7 @@
 		private const string VIOLENCE = "violence";
 		private const string SEXUAL = "sexual";
 		private string _requestUri = "";
+		private string? _ioapi = null;
 
 		public VideoHelper(IStorageHelper sth, ILogHelper logHelper, IContentSafetyHelper csh, IAzureSQLHelper ash, HttpClient httpClient)
 		{
@@ -26,9 +27,9 @@
 			_ash = ash;
 			_httpClient = httpClient;
 
-			var ioapi = Environment.GetEnvironmentVariable("INVOKE_OPEN_AI");
+			_ioapi = Environment.GetEnvironmentVariable("INVOKE_OPEN_AI");
 
-			if (!string.IsNullOrEmpty(ioapi))
+			if (!string.IsNullOrEmpty(_ioapi) && _ioapi.ToLower() == "true")
 			{
 				var oaidnm = Environment.GetEnvironmentVariable("OPEN_AI_DEPLOYMENT_NAME") ?? "";
 				var oaikey = Environment.GetEnvironmentVariable("OPEN_AI_KEY") ?? "";
@@ -65,10 +66,9 @@
 			{
 				var air = await GetContentSafteyDetailsAsync(item.Value);
 
-				var ioapi = Environment.GetEnvironmentVariable("INVOKE_OPEN_AI");
 				var summary = "";
 				var childYesNo = "";
-				if(!string.IsNullOrEmpty(ioapi))
+				if(!string.IsNullOrEmpty(_ioapi) && _ioapi.ToLower() == "true")
 				{
 					summary = getSummaryB ? await SummarizeImageAsync(item.Value, "Can you do a detail analysis and tell me all the minute details about this image. Use no more than 450 words!!!") : string.Empty;
 					childYesNo = getChildYesNoB ? await SummarizeImageAsync(item.Value, "Is there a younger person or child in this image? If you can't make a determination ANSWER No, ONLY ANSWER Yes or No!!") : string.Empty;

@@ -15,6 +15,7 @@
 - Upload extracted frames to Azure Blob Storage.
 - Run safety analysis on the extracted frames.
 - Supports multiple image formats.
+- Export results.
 
 ## Prerequisites
 
@@ -35,24 +36,29 @@ cd NovelCsamDetection/NovelCsam.UI.Console
 
 The application requires configuration for Azure Storage, Content Safety services, Azure SQL Database, Azure Cosmos DB, OpenAI Service, and Application Insights. Update the `appsettings.json` file with your Azure credentials and settings.
 
+If  ***InvokeOpenAI* **is set to True, then please popualte:
+
+* "OpenAiDeploymentName",
+* "OpenAiKey",
+* "OpenAiEndpoint",
+* "OpenAiModel"
+
 ```
 {
   "Azure": {
-    "StorageAccountName": "your_storage_account_name",
-    "StorageAccountKey": "your_storage_account_key",
-    "ContentSafetyEndpoint": "your_content_safety_endpoint",
-    "ContentSafetyKey": "your_content_safety_key",
-    "AzureSqlConnectionString": "your_azure_sql_connection_string",
-    "CosmosDbConnectionString": "your_cosmos_db_connection_string",
-    "CosmosDbDatabaseName": "your_cosmos_db_database_name",
-    "CosmosDbContainerName": "your_cosmos_db_container_name",
-    "StorageAccountUrl": "your_storage_account_url",
-    "OpenAiDeploymentName": "your_open_ai_deployment_name",
-    "OpenAiKey": "your_open_ai_key",
-    "OpenAiEndpoint": "your_open_ai_endpoint",
-    "OpenAiModel": "your_open_ai_model",
-    "AppInsightsConnectionString": "your_app_insights_connection_string",
-    "AnalyzeFrameAzureFunctionUrl": "your_azure_function_url"
+    "SqlConnectionString": "",
+    "ContentSafetyConnectionString": "",
+    "ContentSafetyConnectionKey": "",
+    "StorageAccountName": "",
+    "StorageAccountKey": "",
+    "StorageAccountUrl": "",
+    "OpenAiDeploymentName": "",
+    "OpenAiKey": "",
+    "OpenAiEndpoint": "",
+    "OpenAiModel": "",
+    "AppInsightsConnectionString": "",
+    "AnalyzeFrameAzureFunctionUrl": "",
+    "InvokeOpenAI": ""
   }
 }
 ```
@@ -70,6 +76,7 @@ The application requires configuration for Azure Storage, Content Safety service
 * **OpenAI Endpoint** : `"OpenAiEndpoint"`
 * **OpenAI Model** : `"OpenAiModel"`
 * **App Insights Connection String** : `"AppInsightsConnectionString"`
+* **Invoke Open AI**: ""InvokeOpenAI"
 
 ## Code Structure
 
@@ -78,6 +85,16 @@ The application requires configuration for Azure Storage, Content Safety service
 * `IStorageHelper.cs`: Interface for storage-related operations.
 * `VideoHelper.cs`: Implementation of video-related operations.
 * `StorageHelper.cs`: Implementation of storage-related operations.
+
+## Database
+
+This application uses a SQL database.
+The database table create scripts can be found under
+the "Infrastructure" folder. This code can also be
+changed to use any database that we choose. There is
+code that writes result data to a Cosmos DB for example under NovelCsam.Helpers/CosmosDBHelper.cs.
+
+* **Create_Tables.sql :** Database tables
 
 ## Contributing
 

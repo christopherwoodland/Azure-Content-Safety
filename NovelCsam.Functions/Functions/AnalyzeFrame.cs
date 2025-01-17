@@ -15,6 +15,7 @@ namespace NovelCsam.Functions.Functions
 		private const string SELF_HARM = "selfharm";
 		private const string VIOLENCE = "violence";
 		private const string SEXUAL = "sexual";
+		private string? _ioapi = null;
 
 		public AnalyzeFrame(IStorageHelper sth, ILogHelper logHelper, IContentSafetyHelper csh, IAzureSQLHelper ash, IVideoHelper videoHelper)
 		{
@@ -22,20 +23,27 @@ namespace NovelCsam.Functions.Functions
 			_sth = sth;
 			_csh = csh;
 			_ash = ash;
-			var oaidnm = Environment.GetEnvironmentVariable("OPEN_AI_DEPLOYMENT_NAME") ?? "";
-			var oaikey = Environment.GetEnvironmentVariable("OPEN_AI_KEY") ?? "";
-			var oaiendpoint = Environment.GetEnvironmentVariable("OPEN_AI_ENDPOINT") ?? "";
-			var oaimodel = Environment.GetEnvironmentVariable("OPEN_AI_MODEL") ?? "";
-			_kernelBuilder = Kernel.CreateBuilder();
+			_ioapi = Environment.GetEnvironmentVariable("INVOKE_OPEN_AI");
 
-			_kernelBuilder.AddAzureOpenAIChatCompletion(
-				deploymentName: oaidnm,
-				apiKey: oaikey,
-				endpoint: oaiendpoint,
-				modelId: oaimodel,
-				serviceId: Guid.NewGuid().ToString());
 
-			_kernel = _kernelBuilder.Build();
+			if (!string.IsNullOrEmpty(_ioapi) && _ioapi.ToLower() == "true")
+			{
+				var oaidnm = Environment.GetEnvironmentVariable("OPEN_AI_DEPLOYMENT_NAME") ?? "";
+				var oaikey = Environment.GetEnvironmentVariable("OPEN_AI_KEY") ?? "";
+				var oaiendpoint = Environment.GetEnvironmentVariable("OPEN_AI_ENDPOINT") ?? "";
+				var oaimodel = Environment.GetEnvironmentVariable("OPEN_AI_MODEL") ?? "";
+
+				_kernelBuilder = Kernel.CreateBuilder();
+
+				_kernelBuilder.AddAzureOpenAIChatCompletion(
+					deploymentName: oaidnm,
+					apiKey: oaikey,
+					endpoint: oaiendpoint,
+					modelId: oaimodel,
+					serviceId: Guid.NewGuid().ToString());
+
+				_kernel = _kernelBuilder.Build();
+			}
 			_videoHelper = videoHelper;
 
 			_retryPolicy = Policy
@@ -53,10 +61,17 @@ namespace NovelCsam.Functions.Functions
 			try
 			{
 				var frameBinaryData = new BinaryData(item.Frame.Data);
-
 				var air = await _retryPolicy.ExecuteAsync(() => _videoHelper.GetContentSafteyDetailsAsync(frameBinaryData));
-				var summary = item.GetSummary ? await _retryPolicy.ExecuteAsync(() => _videoHelper.SummarizeImageAsync(frameBinaryData, "Can you do a detail analysis and tell me all the minute details about this image. Use no more than 450 words!!!")) : string.Empty;
-				var childYesNo = item.GetChildYesNo ? await _retryPolicy.ExecuteAsync(() => _videoHelper.SummarizeImageAsync(frameBinaryData, "Is there a younger person or child in this image? If you can't make a determination ANSWER No, ONLY ANSWER Yes or No!!")) : string.Empty;
+				
+				var summary = "";
+				var childYesNo = "";
+				
+				if (!string.IsNullOrEmpty(_ioapi) && _ioapi.ToLower() == "true")
+				{
+					summary = item.GetSummary ? await _retryPolicy.ExecuteAsync(() => _videoHelper.SummarizeImageAsync(frameBinaryData, "Can you do a detail analysis and tell me all the minute details about this image. Use no more than 450 words!!!")) : string.Empty;
+					childYesNo = item.GetChildYesNo ? await _retryPolicy.ExecuteAsync(() => _videoHelper.SummarizeImageAsync(frameBinaryData, "Is there a younger person or child in this image? If you can't make a determination ANSWER No, ONLY ANSWER Yes or No!!")) : string.Empty;
+
+				}
 				var md5Hash = _videoHelper.CreateMD5Hash(frameBinaryData);
 
 				var newItem = new FrameResult
@@ -93,7 +108,7 @@ namespace NovelCsam.Functions.Functions
 					}
 				}
 				summary = summary.Contains("429") ? "" : summary;
-				childYesNo = childYesNo.Contains("429") ? "": childYesNo;
+				childYesNo = childYesNo.Contains("429") ? "" : childYesNo;
 				await _ash.CreateFrameResult(newItem);
 				await _ash.InsertBase64(newItem);
 				return item.RunId;

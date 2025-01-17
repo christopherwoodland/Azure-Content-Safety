@@ -11,13 +11,18 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NovelCsam.UI.Console", "Nov
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NovelCsam.Helpers", "NovelCsam.Helpers\NovelCsam.Helpers.csproj", "{37257163-551C-49D4-9EDD-E50AB5AB656F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NovelCsam.Functions", "NovelCsam.Functions\NovelCsam.Functions.csproj", "{38E805B7-AF54-4280-8D2E-4499C9A85ABE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NovelCsam.Functions", "NovelCsam.Functions\NovelCsam.Functions.csproj", "{38E805B7-AF54-4280-8D2E-4499C9A85ABE}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Infrastructure", "Infrastructure", "{613BAD3D-5E8C-43A7-A502-FB6534B39791}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Functions", "Functions", "{3D4FB277-E6E6-428C-A0DC-7191DA8B3576}"
 	ProjectSection(SolutionItems) = preProject
 		Set-AppSettings.ps1 = Set-AppSettings.ps1
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Database", "Database", "{D4396C9F-28B9-47DA-BC0C-778E4C2084FA}"
+	ProjectSection(SolutionItems) = preProject
+		Create_Tables.sql = Create_Tables.sql
 	EndProjectSection
 EndProject
 Global
@@ -52,6 +57,7 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{3D4FB277-E6E6-428C-A0DC-7191DA8B3576} = {613BAD3D-5E8C-43A7-A502-FB6534B39791}
+		{D4396C9F-28B9-47DA-BC0C-778E4C2084FA} = {613BAD3D-5E8C-43A7-A502-FB6534B39791}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0BC52EC0-5BF1-4A69-93BC-7BFEBD22F5F4}
