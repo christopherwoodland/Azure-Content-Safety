@@ -17,7 +17,10 @@ namespace NovelCsam.Helpers
 				.Handle<SqlException>(ex => ex.Number == -2) // SQL Server timeout error number
 				.Or<SqlException>(ex => ex.Number == 1205) // SQL Server deadlock error number
 				.Or<SqlException>(ex => ex.Number == 40613) // SQL Server database unavailable error number
-				.WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(3, retryAttempt)),
+				.Or<SqlException>(ex => ex.Number == 40501) //The service is currently busy. Retry the request after 10 seconds. Incident ID: %ls. Code: %d.
+				.Or<SqlException>(ex => ex.Number == 49919) //Cannot process create or update request. Too many create or update operations in progress for subscription "%ld".
+				.Or<SqlException>(ex => ex.Number == 49920) //Cannot process request. Too many operations in progress for subscription "%ld".
+				.WaitAndRetryAsync(10, retryAttempt => TimeSpan.FromSeconds(Math.Pow(3, retryAttempt)),
 					(exception, timeSpan, retryCount, context) =>
 					{
 						LogHelper.LogInformation($"Retry {retryCount} encountered an error: {exception.Message}. Waiting {timeSpan} before next retry.", nameof(AzureSQLHelper), "Constructor");
