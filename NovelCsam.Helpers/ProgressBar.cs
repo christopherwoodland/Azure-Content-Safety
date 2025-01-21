@@ -23,7 +23,7 @@
 			cts.Cancel();
 			await progressTask;
 
-			Console.WriteLine();
+			Console.WriteLine("\n");
 		}
 
 		private static void DrawProgressBar(int percent)

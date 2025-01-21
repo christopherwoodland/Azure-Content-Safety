@@ -5,12 +5,9 @@ namespace NovelCsam.Functions.Functions
 {
 	public class ImageProcessingOrchestrator
 	{
-		private readonly ILogHelper _logHelper;
 		private readonly IStorageHelper _sth;
-
-		public ImageProcessingOrchestrator(IStorageHelper sth, ILogHelper logHelper)
+		public ImageProcessingOrchestrator(IStorageHelper sth)
 		{
-			_logHelper = logHelper;
 			_sth = sth;
 		}
 
@@ -20,7 +17,7 @@ namespace NovelCsam.Functions.Functions
 		{
 			try
 			{
-				_logHelper.LogInformation("ImageProcessingOrchestrator Started", nameof(ImageProcessingOrchestrator), nameof(RunOrchestrator));
+				LogHelper.LogInformation("ImageProcessingOrchestrator Started", nameof(ImageProcessingOrchestrator), nameof(RunOrchestrator));
 				var fom = JsonConvert.DeserializeObject<FrameOrchestrationModel>(context.GetInput<string>() ?? "");
 				if (fom != null)
 				{
@@ -58,13 +55,13 @@ namespace NovelCsam.Functions.Functions
 				}
 				else
 				{
-					_logHelper.LogInformation($"Frame model is null", nameof(ImageProcessingOrchestrator), nameof(RunOrchestrator));
+					LogHelper.LogInformation($"Frame model is null", nameof(ImageProcessingOrchestrator), nameof(RunOrchestrator));
 					return "";
 				}
 			}
 			catch (Exception ex)
 			{
-				_logHelper.LogException($"An error occurred when processing an image: {ex.Message}", nameof(ImageProcessingOrchestrator), nameof(RunOrchestrator), ex);
+				LogHelper.LogException($"An error occurred when processing an image: {ex.Message}", nameof(ImageProcessingOrchestrator), nameof(RunOrchestrator), ex);
 				return "";
 			}
 		}

@@ -36,7 +36,7 @@ cd NovelCsamDetection/NovelCsam.UI.Console
 
 The application requires configuration for Azure Storage, Content Safety services, Azure SQL Database, Azure Cosmos DB, OpenAI Service, and Application Insights. Update the `appsettings.json` file with your Azure credentials and settings.
 
-If  ***InvokeOpenAI* **is set to True, then please popualte:
+If  ***InvokeOpenAI* **is set to True, then please populate:
 
 * "OpenAiDeploymentName",
 * "OpenAiKey",
@@ -58,7 +58,8 @@ If  ***InvokeOpenAI* **is set to True, then please popualte:
     "OpenAiModel": "",
     "AppInsightsConnectionString": "",
     "AnalyzeFrameAzureFunctionUrl": "",
-    "InvokeOpenAI": ""
+    "InvokeOpenAI": "",
+    "DebugToConsole":""
   }
 }
 ```
@@ -76,7 +77,41 @@ If  ***InvokeOpenAI* **is set to True, then please popualte:
 * **OpenAI Endpoint** : `"OpenAiEndpoint"`
 * **OpenAI Model** : `"OpenAiModel"`
 * **App Insights Connection String** : `"AppInsightsConnectionString"`
-* **Invoke Open AI**: ""InvokeOpenAI"
+* **Invoke Open AI**: `"InvokeOpenAI"`
+* **Debug to Console**: `"DebugToConsole"`
+
+## Configuration Definitions
+
+* **SqlConnectionString** :
+  * **Purpose** : Provides the connection string for connecting to an Azure SQL Database. This string includes the server address, database name, user credentials, and other connection settings.
+* **`ContentSafetyConnectionString`** :
+  * **Purpose** : Specifies the connection string for the Azure Content Safety service, which is used to access the content safety API.
+* **`ContentSafetyConnectionKey`** :
+  * **Purpose** : Contains the API key for authenticating with the Azure Content Safety service. This key is required to authorize requests to the content safety API.
+* **`StorageAccountName`** :
+  * **Purpose** : Specifies the name of the Azure Storage account. This name is used to identify the storage account within Azure.
+* **`StorageAccountUrl`** :
+  * **Purpose** : Specifies the URL for accessing the Azure Storage account. This URL is used to interact with the storage services provided by the account.
+* **`StorageAccountKey`** :
+  * **Purpose** : Provides the access key for the Azure Storage account. This key is used to authenticate and authorize access to the storage account.
+* **`OpenAiDeploymentName`** :
+  * **Purpose** : Indicates the deployment name for the OpenAI service. This name is used to identify the specific deployment of the OpenAI model.
+* **`OpenAiKey`** :
+  * **Purpose** : Contains the API key for authenticating with the OpenAI service. This key is required to authorize requests to the OpenAI API.
+* **`OpenAiEndpoint`** :
+  * **Purpose** : Specifies the endpoint URL for accessing the OpenAI service. This URL is used to send requests to the OpenAI API.
+* **`OpenAiModel`** :
+  * **Purpose** : Indicates the model name for the OpenAI service. This name is used to specify which OpenAI model to use for processing requests.
+* **`AppInsightsConnectionString`** :
+  * **Purpose** : Provides the connection string for Azure Application Insights. This string is used to configure telemetry data collection and monitoring.
+* **`AnalyzeFrameAzureFunctionUrl`** :
+  * **Purpose** : Specifies the URL for the Azure Function that analyzes frames. This URL is used to trigger the function and pass data for analysis.
+* **`InvokeOpenAI`** :
+  * **Purpose** : A flag indicating whether to invoke the OpenAI service. This flag is used to enable or disable calls to the OpenAI API.
+    * True or False value.
+* **`DebugToConsole`:**
+  * **Purpose** : A flag indicating whether to output debug information to the console. This flag is used to enable or disable console logging for debugging purposes.
+    * True or False value.
 
 ## Code Structure
 

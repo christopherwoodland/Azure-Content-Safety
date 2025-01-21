@@ -5,10 +5,8 @@
 		private readonly DataLakeServiceClient _serviceClient;
 		private readonly ILogHelper _logHelper;
 
-		public StorageHelper(ILogHelper logHelper)
+		public StorageHelper()
 		{
-			_logHelper = logHelper;
-
 			var san = Environment.GetEnvironmentVariable("STORAGE_ACCOUNT_NAME") ?? "";
 			var sak = Environment.GetEnvironmentVariable("STORAGE_ACCOUNT_KEY") ?? "";
 			var saurl = Environment.GetEnvironmentVariable("STORAGE_ACCOUNT_URL") ?? "";
@@ -180,7 +178,7 @@
 					}
 					catch (Exception ex)
 					{
-						_logHelper.LogException($"An error occurred listing blobs: {ex.Message}", nameof(StorageHelper), nameof(ListBlobsRecursive), ex);
+						LogHelper.LogException($"An error occurred listing blobs: {ex.Message}", nameof(StorageHelper), nameof(ListBlobsRecursive), ex);
 						continue;
 					}
 				}
@@ -198,7 +196,7 @@
 			}
 			catch (Exception ex)
 			{
-				_logHelper.LogException($"An error occurred listing directories: {ex.Message}", nameof(StorageHelper), nameof(ListDirectoriesInFolderAsync), ex);
+				LogHelper.LogException($"An error occurred listing directories: {ex.Message}", nameof(StorageHelper), nameof(ListDirectoriesInFolderAsync), ex);
 				throw;
 			}
 
@@ -215,7 +213,7 @@
 			}
 			catch (Exception ex)
 			{
-				_logHelper.LogException($"An error occurred listing blobs: {ex.Message}", nameof(StorageHelper), nameof(ListBlobsInFolderWithResizeAsync), ex);
+				LogHelper.LogException($"An error occurred listing blobs: {ex.Message}", nameof(StorageHelper), nameof(ListBlobsInFolderWithResizeAsync), ex);
 				throw;
 			}
 
@@ -230,12 +228,12 @@
 				using var fileStream = File.OpenRead(fullFilePath);
 
 				var fur = await fileClient.UploadAsync(fileStream, true);
-				_logHelper.LogInformation($"File '{fullFilePath}' uploaded to '{folderPath} {fur}' in container '{containerName}'.", nameof(StorageHelper), nameof(UploadFileAsync));
+				LogHelper.LogInformation($"File '{fullFilePath}' uploaded to '{folderPath} {fur}' in container '{containerName}'.", nameof(StorageHelper), nameof(UploadFileAsync));
 				return $"{folderPath}/{Path.GetFileName(fullFilePath)}";
 			}
 			catch (Exception ex)
 			{
-				_logHelper.LogException($"An error occurred while uploading the file: {ex.Message}", nameof(StorageHelper), nameof(UploadFileAsync), ex);
+				LogHelper.LogException($"An error occurred while uploading the file: {ex.Message}", nameof(StorageHelper), nameof(UploadFileAsync), ex);
 				throw;
 			}
 		}
@@ -254,19 +252,19 @@
 					using var fileStream = File.OpenRead(lvp);
 
 					var fur = await fileClient.UploadAsync(fileStream, true);
-					_logHelper.LogInformation($"File '{fileName}' uploaded to '{folderPath} {fur}' in container '{containerName}'.", nameof(StorageHelper), nameof(UploadFileAsync));
+					LogHelper.LogInformation($"File '{fileName}' uploaded to '{folderPath} {fur}' in container '{containerName}'.", nameof(StorageHelper), nameof(UploadFileAsync));
 				}
 				else
 				{
 					var message = $"An error occurred while uploading the file: {fileName}. Direc is null";
 					var arge = new ArgumentNullException(message);
-					_logHelper.LogException(message, nameof(StorageHelper), nameof(UploadFileAsync), arge);
+					LogHelper.LogException(message, nameof(StorageHelper), nameof(UploadFileAsync), arge);
 					throw arge;
 				}
 			}
 			catch (Exception ex)
 			{
-				_logHelper.LogException($"An error occurred while uploading the file: {ex.Message}", nameof(StorageHelper), nameof(UploadFileAsync), ex);
+				LogHelper.LogException($"An error occurred while uploading the file: {ex.Message}", nameof(StorageHelper), nameof(UploadFileAsync), ex);
 				throw;
 			}
 		}
@@ -282,11 +280,11 @@
 				{
 					await downloadInfo.Value.Content.CopyToAsync(fs);
 				}
-				_logHelper.LogInformation($"File '{fileName}' downloaded to '{localVideoPath}' in container '{containerName}'.", nameof(StorageHelper), nameof(DownloadFileAsync));
+				LogHelper.LogInformation($"File '{fileName}' downloaded to '{localVideoPath}' in container '{containerName}'.", nameof(StorageHelper), nameof(DownloadFileAsync));
 			}
 			catch (Exception ex)
 			{
-				_logHelper.LogException($"An error occurred while downloading the file: {ex.Message}", nameof(StorageHelper), nameof(DownloadFileAsync), ex);
+				LogHelper.LogException($"An error occurred while downloading the file: {ex.Message}", nameof(StorageHelper), nameof(DownloadFileAsync), ex);
 				throw;
 			}
 		}
