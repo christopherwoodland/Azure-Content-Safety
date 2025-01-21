@@ -2,8 +2,6 @@
 {
 	public class CsvExporter : ICsvExporter
 	{
-		private readonly ILogHelper _logHelper;
-
 		public CsvExporter()
 		{
 

@@ -4,7 +4,6 @@ namespace NovelCsam.Helpers
 	{
 		#region Private Fields
 		private readonly string _connectionString;
-		private readonly ILogHelper _logHelper;
 		private readonly AsyncRetryPolicy _retryPolicy;
 		#endregion
 

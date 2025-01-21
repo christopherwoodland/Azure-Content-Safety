@@ -2,7 +2,6 @@ namespace NovelCsam.Helpers
 {
 	public class ContentSafetyHelper : IContentSafetyHelper
 	{
-		private readonly ILogHelper _logHelper;
 		private readonly ContentSafetyClient _csc;
 
 		public ContentSafetyHelper()

@@ -4,7 +4,6 @@
 	{
 		private readonly IKernelBuilder _kernelBuilder;
 		private readonly Kernel _kernel;
-		private readonly ILogHelper _logHelper;
 		private readonly IStorageHelper _sth;
 		private readonly IContentSafetyHelper _csh;
 		private readonly IAzureSQLHelper _ash;

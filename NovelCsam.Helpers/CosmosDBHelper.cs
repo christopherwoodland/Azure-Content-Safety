@@ -6,8 +6,7 @@ namespace NovelCsam.Helpers
 
 		private readonly CosmosClient _cosmosClient;
 		private readonly Container _container;
-		private readonly ILogHelper _logHelper;
-
+		
 		#endregion
 
 		#region Constructor
