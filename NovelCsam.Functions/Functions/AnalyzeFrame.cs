@@ -4,7 +4,6 @@ namespace NovelCsam.Functions.Functions
 	{
 		private readonly IKernelBuilder _kernelBuilder;
 		private readonly Kernel _kernel;
-		private readonly ILogHelper _logHelper;
 		private readonly IStorageHelper _sth;
 		private readonly IContentSafetyHelper _csh;
 		private readonly IAzureSQLHelper _ash;
@@ -17,9 +16,8 @@ namespace NovelCsam.Functions.Functions
 		private const string SEXUAL = "sexual";
 		private string? _ioapi = null;
 
-		public AnalyzeFrame(IStorageHelper sth, ILogHelper logHelper, IContentSafetyHelper csh, IAzureSQLHelper ash, IVideoHelper videoHelper)
+		public AnalyzeFrame(IStorageHelper sth, IContentSafetyHelper csh, IAzureSQLHelper ash, IVideoHelper videoHelper)
 		{
-			_logHelper = logHelper;
 			_sth = sth;
 			_csh = csh;
 			_ash = ash;
@@ -51,7 +49,7 @@ namespace NovelCsam.Functions.Functions
 				.WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
 					(exception, timeSpan, retryCount, context) =>
 					{
-						_logHelper.LogInformation($"Retry {retryCount} encountered an error: {exception.Message}. Waiting {timeSpan} before next retry.", nameof(AnalyzeFrame), "Constructor");
+						LogHelper.LogInformation($"Retry {retryCount} encountered an error: {exception.Message}. Waiting {timeSpan} before next retry.", nameof(AnalyzeFrame), "Constructor");
 					});
 		}
 
@@ -110,12 +108,12 @@ namespace NovelCsam.Functions.Functions
 				summary = summary.Contains("429") ? "" : summary;
 				childYesNo = childYesNo.Contains("429") ? "" : childYesNo;
 				await _ash.CreateFrameResult(newItem);
-				await _ash.InsertBase64(newItem);
+				//await _ash.InsertBase64(newItem); I don't think we need this, will confirm...
 				return item.RunId;
 			}
 			catch (Exception ex)
 			{
-				_logHelper.LogException($"An error occurred when processing an image: {ex.Message}", nameof(AnalyzeFrame), nameof(RunAnalyzeFrameAsync), ex);
+				LogHelper.LogException($"An error occurred when processing an image: {ex.Message}", nameof(AnalyzeFrame), nameof(RunAnalyzeFrameAsync), ex);
 				return "";
 			}
 		}

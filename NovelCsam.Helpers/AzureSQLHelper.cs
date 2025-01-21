@@ -9,9 +9,8 @@ namespace NovelCsam.Helpers
 		#endregion
 
 		#region Constructor
-		public AzureSQLHelper(ILogHelper logHelper)
+		public AzureSQLHelper()
 		{
-			_logHelper = logHelper;
 			_connectionString = Environment.GetEnvironmentVariable("AZURE_SQL_CONNECTION_STRING") ?? "";
 
 			_retryPolicy = Policy
@@ -21,7 +20,7 @@ namespace NovelCsam.Helpers
 				.WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(3, retryAttempt)),
 					(exception, timeSpan, retryCount, context) =>
 					{
-						_logHelper.LogInformation($"Retry {retryCount} encountered an error: {exception.Message}. Waiting {timeSpan} before next retry.", nameof(AzureSQLHelper), "Constructor");
+						LogHelper.LogInformation($"Retry {retryCount} encountered an error: {exception.Message}. Waiting {timeSpan} before next retry.", nameof(AzureSQLHelper), "Constructor");
 					});
 		}
 		#endregion
@@ -228,7 +227,7 @@ namespace NovelCsam.Helpers
 				}
 				catch (Exception ex)
 				{
-					_logHelper.LogException(ex.Message, nameof(AzureSQLHelper), nameof(ExecuteNonQueryAsync), ex);
+					LogHelper.LogException(ex.Message, nameof(AzureSQLHelper), nameof(ExecuteNonQueryAsync), ex);
 					return null;
 				}
 			});

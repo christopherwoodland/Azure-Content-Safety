@@ -4,9 +4,8 @@
 	{
 		private readonly ILogHelper _logHelper;
 
-		public CsvExporter(ILogHelper logHelper)
+		public CsvExporter()
 		{
-			_logHelper = logHelper;
 
 		}
 		public async Task<bool> ExportToCsvAsync(IEnumerable<IFrameDetailResult> records, string filePath)
@@ -33,7 +32,7 @@
 			}
 			catch (Exception ex)
 			{
-				_logHelper.LogException(ex.Message, nameof(CsvExporter), nameof(ExportToCsvAsync), ex);
+				LogHelper.LogException(ex.Message, nameof(CsvExporter), nameof(ExportToCsvAsync), ex);
 				return false;
 			}
 		}

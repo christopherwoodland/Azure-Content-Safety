@@ -2,3 +2,9 @@
 global using NovelCsam.Helpers;
 global using NovelCsam.Helpers.Interfaces;
 global using Microsoft.Extensions.Configuration;
+global using Azure.Monitor.OpenTelemetry.Exporter;
+global using Microsoft.Extensions.Logging;
+global using Microsoft.Identity.Client.Platforms.Features.DesktopOs.Kerberos;
+global using OpenTelemetry;
+global using OpenTelemetry.Resources;
+global using System.Windows.Forms;
