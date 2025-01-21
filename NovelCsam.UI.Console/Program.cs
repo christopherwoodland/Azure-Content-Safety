@@ -101,7 +101,7 @@
 	#region Configuration Methods
 	private static void ConfigureServices(IServiceCollection services)
 	{
-		services.AddTransient<IAzureSQLHelper, AzureSQLHelper>();
+		services.AddSingleton<IAzureSQLHelper, AzureSQLHelper>();
 		services.AddTransient<IContentSafetyHelper, ContentSafetyHelper>();
 		services.AddTransient<IStorageHelper, StorageHelper>();
 		services.AddTransient<ICsvExporter, CsvExporter>();
