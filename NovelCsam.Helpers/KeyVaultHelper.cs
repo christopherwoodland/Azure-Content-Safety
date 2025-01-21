@@ -3,14 +3,12 @@
 	public class KeyVaultHelper
 	{
 		private readonly SecretClient _secretClient;
-		private readonly ILogHelper _logHelper;
-
-		public KeyVaultHelper(string keyVaultName, ILogHelper logHelper)
+		
+		public KeyVaultHelper(string keyVaultName)
 		{
 			if (string.IsNullOrWhiteSpace(keyVaultName))
 				throw new ArgumentException("Key vault name cannot be null or whitespace.", nameof(keyVaultName));
-			_logHelper = logHelper ?? throw new ArgumentNullException(nameof(logHelper));
-
+			
 			var keyVaultUrl = $"https://{keyVaultName}.vault.azure.net/";
 			_secretClient = new SecretClient(new Uri(keyVaultUrl), new DefaultAzureCredential());
 		}
@@ -27,12 +25,12 @@
 			}
 			catch (RequestFailedException ex)
 			{
-				_logHelper.LogException($"Request failed while retrieving the secret: {ex.Message}", nameof(KeyVaultHelper), nameof(GetSecretAsync), ex);
+				LogHelper.LogException($"Request failed while retrieving the secret: {ex.Message}", nameof(KeyVaultHelper), nameof(GetSecretAsync), ex);
 				throw;
 			}
 			catch (Exception ex)
 			{
-				_logHelper.LogException($"An error occurred while retrieving the secret: {ex.Message}", nameof(KeyVaultHelper), nameof(GetSecretAsync), ex);
+				LogHelper.LogException($"An error occurred while retrieving the secret: {ex.Message}", nameof(KeyVaultHelper), nameof(GetSecretAsync), ex);
 				throw;
 			}
 		}

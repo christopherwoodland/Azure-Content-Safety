@@ -18,10 +18,9 @@
 		private string _requestUri = "";
 		private string? _ioapi = null;
 
-		public VideoHelper(IStorageHelper sth, ILogHelper logHelper, IContentSafetyHelper csh, IAzureSQLHelper ash, HttpClient httpClient)
+		public VideoHelper(IStorageHelper sth, IContentSafetyHelper csh, IAzureSQLHelper ash, HttpClient httpClient)
 		{
 			_requestUri = Environment.GetEnvironmentVariable("ANALYZE_FRAME_AZURE_FUNCTION_URL") ?? "";
-			_logHelper = logHelper;
 			_sth = sth;
 			_csh = csh;
 			_ash = ash;
@@ -58,18 +57,17 @@
 			string containerFolderPath, string containerFolderPathResults, bool withBase64ofImage = false,
 			bool getSummaryB = true, bool getChildYesNoB = true)
 		{
-
-			Console.WriteLine($"\n----------------------------------------------------------------------");
+			Console.WriteLine($"********************************************************************************");
 			Console.WriteLine($"Pulling list of records....");
-			Console.WriteLine($"----------------------------------------------------------------------\n");
+			Console.WriteLine($"********************************************************************************\n");
 			var list = await _sth.ListBlobsInFolderWithResizeAsync(containerName, containerFolderPath, 3);
 
 			//This could be done better/different
 			int totalCnt = list.Count;
-			int cnt = 1;
-			Console.WriteLine($"\n----------------------------------------------------------------------");
+			int cnt = 0;
+			Console.WriteLine($"\n********************************************************************************");
 			Console.WriteLine($"Total number of records to process: {totalCnt}");
-			Console.WriteLine($"----------------------------------------------------------------------\n");
+			Console.WriteLine($"********************************************************************************\n");
 			var runId = Guid.NewGuid().ToString();
 			var runDateTime = DateTime.UtcNow;
 
@@ -81,7 +79,7 @@
 				if (!string.IsNullOrEmpty(_ioapi) && _ioapi.ToLower() == "true")
 				{
 					summary = getSummaryB ? await SummarizeImageAsync(item.Value, "Can you do a detail analysis and tell me all the minute details about this image. Use no more than 450 words!!!") : string.Empty;
-					childYesNo = getChildYesNoB ? await SummarizeImageAsync(item.Value, "Is there a younger person or child in this image? If you can't make a determination ANSWER No, ONLY ANSWER Yes or No!!") : string.Empty;
+					childYesNo = getChildYesNoB ? await SummarizeImageAsync(item.Value, "Is there a younger person, adolescent, or child in this image? If you can't make a determination ANSWER No, ONLY ANSWER Yes or No!!") : string.Empty;
 				}
 				var md5Hash = CreateMD5Hash(item.Value);
 
@@ -120,17 +118,21 @@
 				}
 
 				await _ash.CreateFrameResult(newItem);
-				await _ash.InsertBase64(newItem);
+				//await _ash.InsertBase64(newItem); I don't think we need this, will confirm...
 				//This could be done better/different
-				Console.WriteLine($"\n----------------------------------------------------------------------\n");
-				Console.WriteLine($"Recorded processed: {item.Key}");
-				Console.WriteLine($"Total number of records processed: {cnt}/{totalCnt}");
-				Console.WriteLine($"\n----------------------------------------------------------------------\n");
+				Console.WriteLine($"\n********************************************************************************");
+				Console.WriteLine($"Record processed: {item.Key}");
+				Console.WriteLine($"********************************************************************************\n");
 				cnt++;
 			});
 
 			await Task.WhenAll(tasks);
+			Console.WriteLine($"********************************************************************************");
+			Console.WriteLine($"Total number of records processed: {cnt}/{totalCnt}");
+			Console.WriteLine($"********************************************************************************\n");
 
+			var message = $"RunId: {runId}: Total number of records processed: {cnt}/{totalCnt} ";
+			LogHelper.LogInformation(message,nameof(VideoHelper), nameof(UploadFrameResultsAsync));
 			return runId;
 		}
 
@@ -150,7 +152,7 @@
 			catch (HttpRequestException ex)
 			{
 				// Handle exception
-				_logHelper.LogException($"An error occurred during CallFunctionHttpStartAsync: {ex.Message}", nameof(VideoHelper), nameof(CallFunctionHttpStartAsync), ex);
+				LogHelper.LogException($"An error occurred during CallFunctionHttpStartAsync: {ex.Message}", nameof(VideoHelper), nameof(CallFunctionHttpStartAsync), ex);
 				return "";
 			}
 		}
@@ -170,7 +172,7 @@
 			catch (HttpRequestException ex)
 			{
 				// Handle exception
-				_logHelper.LogException($"An error occurred during CallFunctionHttpStatusAsync: {ex.Message}", nameof(VideoHelper), nameof(CallFunctionHttpStatusAsync), ex);
+				LogHelper.LogException($"An error occurred during CallFunctionHttpStatusAsync: {ex.Message}", nameof(VideoHelper), nameof(CallFunctionHttpStatusAsync), ex);
 				return "";
 			}
 		}
@@ -226,7 +228,7 @@
 				.WaitAndRetryAsync(maxRetries, retryAttempt => TimeSpan.FromMilliseconds(delayMilliseconds),
 					(exception, timeSpan, retryCount, context) =>
 					{
-						_logHelper.LogInformation($"Retry {retryCount}/{maxRetries} after receiving 429 Too Many Requests. Waiting {timeSpan.TotalMilliseconds}ms before retrying.",
+						LogHelper.LogInformation($"Retry {retryCount}/{maxRetries} after receiving 429 Too Many Requests. Waiting {timeSpan.TotalMilliseconds}ms before retrying.",
 							nameof(VideoHelper), nameof(SummarizeImageAsync));
 					});
 
@@ -250,7 +252,7 @@
 			}
 			catch (Exception ex)
 			{
-				_logHelper.LogException($"An error occurred summarizing an image: {ex.Message}", nameof(VideoHelper), nameof(SummarizeImageAsync), ex);
+				LogHelper.LogException($"An error occurred summarizing an image: {ex.Message}", nameof(VideoHelper), nameof(SummarizeImageAsync), ex);
 				return $"Error: {ex.Message}";
 			}
 		}
@@ -276,7 +278,7 @@
 			{
 				string fileNameFrame = Path.GetFileName(frame);
 				await _sth.UploadFileAsync(containerName, containerFolderPathExtracted, fileNameFrame, localVideoPath, timestamp, sourceFileNameOrPath);
-				_logHelper.LogInformation($"Uploaded {fileNameFrame} to {timestamp}", nameof(VideoHelper), nameof(UploadExtractedFramesToBlobAsync));
+				LogHelper.LogInformation($"Uploaded {fileNameFrame} to {timestamp}", nameof(VideoHelper), nameof(UploadExtractedFramesToBlobAsync));
 			}
 
 			return true;
@@ -298,7 +300,7 @@
 			{
 				string fileNameVideo = Path.GetFileName(video);
 				await _sth.UploadFileAsync(containerName, containerFolderPathSegmented, fileNameVideo, localVideoPath, timestamp, fileName);
-				_logHelper.LogInformation($"Uploaded {fileNameVideo} to {timestamp}", nameof(VideoHelper), nameof(UploadSegmentVideoToBlobAsync));
+				LogHelper.LogInformation($"Uploaded {fileNameVideo} to {timestamp}", nameof(VideoHelper), nameof(UploadSegmentVideoToBlobAsync));
 			}
 		}
 
@@ -338,7 +340,7 @@
 			}
 			catch (Exception ex)
 			{
-				_logHelper.LogException($"An error occurred while extracting frames: {ex.Message}", nameof(VideoHelper), nameof(ExtractFramesAsync), ex);
+				LogHelper.LogException($"An error occurred while extracting frames: {ex.Message}", nameof(VideoHelper), nameof(ExtractFramesAsync), ex);
 				return new List<string>();
 			}
 		}
@@ -359,7 +361,7 @@
 			}
 			catch (Exception ex)
 			{
-				_logHelper.LogException($"An error occurred while segmenting video: {ex.Message}", nameof(VideoHelper), nameof(SegmentVideoAsync), ex);
+				LogHelper.LogException($"An error occurred while segmenting video: {ex.Message}", nameof(VideoHelper), nameof(SegmentVideoAsync), ex);
 				return new List<string>();
 			}
 		}
@@ -395,8 +397,8 @@
 				}
 
 				var result = await conversion.Start();
-				_logHelper.LogInformation($"File {videoPath}: {result.Arguments}", nameof(VideoHelper), nameof(RunFFmpegAsync));
-				_logHelper.LogInformation($"File {videoPath}: {result}", nameof(VideoHelper), nameof(RunFFmpegAsync));
+				LogHelper.LogInformation($"File {videoPath}: {result.Arguments}", nameof(VideoHelper), nameof(RunFFmpegAsync));
+				LogHelper.LogInformation($"File {videoPath}: {result}", nameof(VideoHelper), nameof(RunFFmpegAsync));
 			}
 			catch
 			{

@@ -101,18 +101,12 @@
 	#region Configuration Methods
 	private static void ConfigureServices(IServiceCollection services)
 	{
-		services.AddApplicationInsightsTelemetryWorkerService(options =>
-		{
-			options.ConnectionString = Environment.GetEnvironmentVariable("APP_INSIGHTS_CONNECTION_STRING");
-		});
-
 		services.AddTransient<IAzureSQLHelper, AzureSQLHelper>();
-		services.AddScoped<ILogHelper, LogHelper>();
-		services.AddScoped<IContentSafetyHelper, ContentSafetyHelper>();
-		services.AddScoped<IStorageHelper, StorageHelper>();
-		services.AddScoped<ICsvExporter, CsvExporter>();
+		services.AddTransient<IContentSafetyHelper, ContentSafetyHelper>();
+		services.AddTransient<IStorageHelper, StorageHelper>();
+		services.AddTransient<ICsvExporter, CsvExporter>();
 		services.AddTransient<IVideoHelper, VideoHelper>();
-		services.AddScoped<HttpClient>();
+		services.AddTransient<HttpClient>();
 	}
 
 	private static void SetEnvVariables()
@@ -135,9 +129,10 @@
 			{ "OPEN_AI_KEY", configuration["Azure:OpenAiKey"] },
 			{ "OPEN_AI_ENDPOINT", configuration["Azure:OpenAiEndpoint"] },
 			{ "OPEN_AI_MODEL", configuration["Azure:OpenAiModel"] },
-			{ "APP_INSIGHTS_CONNECTION_STRING", configuration["Azure:AppInsightsConnectionString"] },
+			{ "APPLICATIONINSIGHTS_CONNECTION_STRING", configuration["Azure:AppInsightsConnectionString"] },
 			{ "INVOKE_OPEN_AI", configuration["Azure:InvokeOpenAI"] },
-			{ "ANALYZE_FRAME_AZURE_FUNCTION_URL", configuration["Azure:AnalyzeFrameAzureFunctionUrl"] }
+			{ "ANALYZE_FRAME_AZURE_FUNCTION_URL", configuration["Azure:AnalyzeFrameAzureFunctionUrl"] },
+			{ "DEBUG_TO_CONSOLE", configuration["Azure:DebugToConsole"] }
 		};
 		foreach (var envVariable in envVariables)
 		{
@@ -305,9 +300,9 @@
 
 				if (!string.IsNullOrEmpty(runId))
 				{
-					Console.WriteLine("****************************************************");
+					Console.WriteLine("********************************************************************************");
 					Console.WriteLine($"{chosenDirValue} is done running! RunId: {runId}");
-					Console.WriteLine("****************************************************");
+					Console.WriteLine("********************************************************************************");
 				}
 			}
 		}
@@ -368,9 +363,9 @@
 
 				if (!string.IsNullOrEmpty(runId))
 				{
-					Console.WriteLine("****************************************************");
+					Console.WriteLine("********************************************************************************");
 					Console.WriteLine($"{chosenDirValue} is done running! RunId: {runId}");
-					Console.WriteLine("****************************************************");
+					Console.WriteLine("********************************************************************************");
 				}
 			}
 		}
@@ -529,9 +524,9 @@
 		{
 			var serviceCollection = new ServiceCollection();
 			ConfigureServices(serviceCollection);
-			var serviceProvider = serviceCollection.BuildServiceProvider();
-			var logHelper = serviceProvider.GetService<ILogHelper>();
-			logHelper?.LogException($"An error occurred during run in main: {ex.Message}", nameof(Program), nameof(Main), ex);
+			//var serviceProvider = serviceCollection.BuildServiceProvider();
+			//var logHelper = serviceProvider.GetService<ILogHelper>();
+			LogHelper.LogException($"An error occurred during run in main: {ex.Message}", nameof(Program), nameof(Main), ex);
 		}
 	}
 	#endregion

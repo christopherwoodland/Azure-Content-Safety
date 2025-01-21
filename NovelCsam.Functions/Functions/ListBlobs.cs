@@ -2,11 +2,9 @@ namespace NovelCsam.Functions.Functions
 {
 	public class ListBlobs
 	{
-		private readonly ILogHelper _logHelper;
 		private readonly IStorageHelper _sth;
-		public ListBlobs(IStorageHelper sth, ILogHelper logHelper)
+		public ListBlobs(IStorageHelper sth)
 		{
-			_logHelper = logHelper;
 			_sth = sth;
 		}
 
@@ -25,7 +23,7 @@ namespace NovelCsam.Functions.Functions
 			}
 			catch (Exception ex)
 			{
-				_logHelper.LogException($"An error occurred when listing blobs: {ex.Message}", nameof(ListBlobs), nameof(RunListBlobsAsync), ex);
+				LogHelper.LogException($"An error occurred when listing blobs: {ex.Message}", nameof(ListBlobs), nameof(RunListBlobsAsync), ex);
 				return null;
 			}
 		}

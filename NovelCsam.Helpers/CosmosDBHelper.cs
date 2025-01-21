@@ -12,11 +12,8 @@ namespace NovelCsam.Helpers
 
 		#region Constructor
 
-		public CosmosDBHelper(ILogHelper logHelper)
+		public CosmosDBHelper()
 		{
-			_logHelper = logHelper;
-
-
 			var cdbcs = Environment.GetEnvironmentVariable("COSMOS_DB_CONNECTION_STRING");
 			var cdbname = Environment.GetEnvironmentVariable("COSMOS_DB_DATABASE_NAME");
 			var cdbcname = Environment.GetEnvironmentVariable("COSMOS_DB_CONTAINER_NAME");
@@ -37,7 +34,7 @@ namespace NovelCsam.Helpers
 			}
 			catch (Exception ex)
 			{
-				_logHelper.LogException(ex.Message, nameof(CosmosDBHelper),
+				LogHelper.LogException(ex.Message, nameof(CosmosDBHelper),
 				  nameof(CreateFrameResult), ex);
 				return null;
 			}
