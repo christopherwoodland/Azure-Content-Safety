@@ -60,7 +60,7 @@
 		{
 
 			Console.WriteLine($"\n----------------------------------------------------------------------");
-			Console.WriteLine($"Pulling list of records....");
+			Console.WriteLine($"Pulling list of records. This could take a moment.....");
 			Console.WriteLine($"----------------------------------------------------------------------\n");
 			var list = await _sth.ListBlobsInFolderWithResizeAsync(containerName, containerFolderPath, 3);
 
