@@ -47,8 +47,14 @@ If  ***InvokeOpenAI* **is set to True, then please populate:
 {
   "Azure": {
     "SqlConnectionString": "",
-    "ContentSafetyConnectionString": "",
-    "ContentSafetyConnectionKey": "",
+    "ContentSafety": {
+      "ContentSafetyConnectionString1": "",
+      "ContentSafetyConnectionKey1": "",
+      "ContentSafetyConnectionString2": "",
+      "ContentSafetyConnectionKey2": "",
+      "ContentSafetyConnectionString3": "",
+      "ContentSafetyConnectionKey3": ""
+    },
     "StorageAccountName": "",
     "StorageAccountKey": "",
     "StorageAccountUrl": "",
@@ -59,7 +65,8 @@ If  ***InvokeOpenAI* **is set to True, then please populate:
     "AppInsightsConnectionString": "",
     "AnalyzeFrameAzureFunctionUrl": "",
     "InvokeOpenAI": "",
-    "DebugToConsole":""
+    "DebugToConsole": "",
+    "AzureCloudDesignation": ""
   }
 }
 ```
