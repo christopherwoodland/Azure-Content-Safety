@@ -120,8 +120,6 @@
 		var envVariables = new Dictionary<string, string>
 		{
 			{ "AZURE_SQL_CONNECTION_STRING", configuration["Azure:SqlConnectionString"] },
-			{ "CONTENT_SAFETY_CONNECTION_STRING", configuration["Azure:ContentSafetyConnectionString"] },
-			{ "CONTENT_SAFETY_CONNECTION_KEY", configuration["Azure:ContentSafetyConnectionKey"] },
 			{ "STORAGE_ACCOUNT_NAME", configuration["Azure:StorageAccountName"] },
 			{ "STORAGE_ACCOUNT_KEY", configuration["Azure:StorageAccountKey"] },
 			{ "STORAGE_ACCOUNT_URL", configuration["Azure:StorageAccountUrl"] },
@@ -132,7 +130,16 @@
 			{ "APPLICATIONINSIGHTS_CONNECTION_STRING", configuration["Azure:AppInsightsConnectionString"] },
 			{ "INVOKE_OPEN_AI", configuration["Azure:InvokeOpenAI"] },
 			{ "ANALYZE_FRAME_AZURE_FUNCTION_URL", configuration["Azure:AnalyzeFrameAzureFunctionUrl"] },
-			{ "DEBUG_TO_CONSOLE", configuration["Azure:DebugToConsole"] }
+			{ "DEBUG_TO_CONSOLE", configuration["Azure:DebugToConsole"] },
+
+			{ "CONTENT_SAFETY_CONNECTION_STRING1", configuration["Azure:ContentSafety:ContentSafetyConnectionString1"] },
+			{ "CONTENT_SAFETY_CONNECTION_KEY1", configuration["Azure:ContentSafety:ContentSafetyConnectionKey1"] },
+
+			{ "CONTENT_SAFETY_CONNECTION_STRING2", configuration["Azure:ContentSafety:ContentSafetyConnectionString2"] },
+			{ "CONTENT_SAFETY_CONNECTION_KEY2", configuration["Azure:ContentSafety:ContentSafetyConnectionKey2"] },
+
+			{ "CONTENT_SAFETY_CONNECTION_STRING3", configuration["Azure:ContentSafety:ContentSafetyConnectionString3"] },
+			{ "CONTENT_SAFETY_CONNECTION_KEY3", configuration["Azure:ContentSafety:ContentSafetyConnectionKey3"] },
 		};
 		foreach (var envVariable in envVariables)
 		{

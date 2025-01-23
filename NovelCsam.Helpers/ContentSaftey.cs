@@ -2,34 +2,56 @@ namespace NovelCsam.Helpers
 {
 	public class ContentSafetyHelper : IContentSafetyHelper
 	{
-		private readonly ContentSafetyClient _csc;
+		private ContentSafetyClient _csc;
+		private readonly List<KeyValuePair<string, string>> _cscstrings;
+		private static int _lastUsedIndex = -1; 
+		private readonly AsyncRetryPolicy _retryPolicy;
+		private const int MAX_CONTENT_SAFETY_INSTANCES = 3;
+
 
 		public ContentSafetyHelper()
 		{
-			var cscs = Environment.GetEnvironmentVariable("CONTENT_SAFETY_CONNECTION_STRING") ?? "";
-			var csck = Environment.GetEnvironmentVariable("CONTENT_SAFETY_CONNECTION_KEY") ?? "";
-			_csc = new ContentSafetyClient(new Uri(cscs), new Azure.AzureKeyCredential(csck));
+			_cscstrings = new();
+			for (int i = 1; i <= MAX_CONTENT_SAFETY_INSTANCES; i++)
+			{
+				var cscs = Environment.GetEnvironmentVariable($"CONTENT_SAFETY_CONNECTION_STRING{i}") ?? "";
+				var csck = Environment.GetEnvironmentVariable($"CONTENT_SAFETY_CONNECTION_KEY{i}") ?? "";
 
+				if (!string.IsNullOrEmpty(cscs) && !string.IsNullOrEmpty(csck))
+					_cscstrings.Add(new KeyValuePair<string, string>(csck, cscs));
+			}
+
+			if (_cscstrings.Count > 0)
+			{
+				_retryPolicy = Policy.Handle<Exception>()
+					.WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+			}
+
+		}
+		public ContentSafetyClient GetNextContentSafetyClient()
+		{
+			if (_cscstrings.Count == 0)
+				throw new InvalidOperationException("No Content Safety clients are configured.");
+
+			int nextIndex;
+			do
+			{
+				nextIndex = (_lastUsedIndex + 1) % _cscstrings.Count;
+			} while (nextIndex == _lastUsedIndex && _cscstrings.Count > 1);
+
+			_lastUsedIndex = nextIndex;
+
+			var keyValuePair = _cscstrings.ElementAt(nextIndex);
+			return new ContentSafetyClient(new Uri(keyValuePair.Value), new AzureKeyCredential(keyValuePair.Key));
 		}
 
 		public async Task<AnalyzeImageResult?> AnalyzeImageAsync(BinaryData inputImage)
 		{
-			const int maxRetries = 3;
-			const int delayMilliseconds = 3000;
-
-			// Define a Polly retry policy
-			var retryPolicy = Policy
-				.Handle<HttpRequestException>(ex => ex.StatusCode == (HttpStatusCode)429)
-				.WaitAndRetryAsync(maxRetries, retryAttempt => TimeSpan.FromMilliseconds(delayMilliseconds),
-					(exception, timeSpan, retryCount, context) =>
-					{
-						LogHelper.LogInformation($"Retry {retryCount}/{maxRetries} after receiving 429 Too Many Requests. Waiting {timeSpan.TotalMilliseconds}ms before retrying.", nameof(ContentSafetyHelper), nameof(AnalyzeImageAsync));
-					});
-
 			try
 			{
-				return await retryPolicy.ExecuteAsync(async () =>
+				return await _retryPolicy.ExecuteAsync(async () =>
 				{
+					_csc = GetNextContentSafetyClient();
 					if (_csc != null)
 					{
 						ContentSafetyImageData image = new(inputImage);
