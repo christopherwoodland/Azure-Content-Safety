@@ -35,16 +35,5 @@
 	<ItemGroup>
 		<ProjectReference Include="..\NovelCsam.Models\NovelCsam.Models.csproj" />
 	</ItemGroup>
-	<ItemGroup>
-		<None Update="ffmpeg-full\tools\ffmpeg\bin\ffmpeg.exe">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</None>
-		<None Update="ffmpeg-full\tools\ffmpeg\bin\ffplay.exe">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</None>
-		<None Update="ffmpeg-full\tools\ffmpeg\bin\ffprobe.exe">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</None>
-	</ItemGroup>
 
 </Project>
