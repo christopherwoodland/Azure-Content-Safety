@@ -373,7 +373,12 @@
 		{
 			try
 			{
-				FFmpeg.SetExecutablesPath(@"ffmpeg-full\tools\ffmpeg\bin");
+				// Combine the base directory with the relative path to the FFmpeg executables
+				string ffmpegPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"ffmpeg-full\tools\ffmpeg\bin");
+
+				// Set the FFmpeg executables path
+				FFmpeg.SetExecutablesPath(ffmpegPath);
+
 				var conversion = FFmpeg.Conversions.New();
 
 				if (mode == FFMPEG_MODE.VSEG)
