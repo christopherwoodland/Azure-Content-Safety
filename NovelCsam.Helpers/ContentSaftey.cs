@@ -1,48 +1,60 @@
+using System.Collections.Generic;
+
 namespace NovelCsam.Helpers
 {
 	public class ContentSafetyHelper : IContentSafetyHelper
 	{
 		private ContentSafetyClient _csc;
-		private readonly List<KeyValuePair<string, string>> _cscstrings;
-		private static int _lastUsedIndex = -1; 
+		private readonly List<KeyValuePair<string, ContentSafetyClient>> _cscConnections;
+		private static int _lastUsedIndex = -1;
 		private readonly AsyncRetryPolicy _retryPolicy;
 		private const int MAX_CONTENT_SAFETY_INSTANCES = 3;
 
 
 		public ContentSafetyHelper()
 		{
-			_cscstrings = new();
+			_cscConnections = [];
 			for (int i = 1; i <= MAX_CONTENT_SAFETY_INSTANCES; i++)
 			{
 				var cscs = Environment.GetEnvironmentVariable($"CONTENT_SAFETY_CONNECTION_STRING{i}") ?? "";
 				var csck = Environment.GetEnvironmentVariable($"CONTENT_SAFETY_CONNECTION_KEY{i}") ?? "";
 
 				if (!string.IsNullOrEmpty(cscs) && !string.IsNullOrEmpty(csck))
-					_cscstrings.Add(new KeyValuePair<string, string>(csck, cscs));
-			}
+				{
+					try
+					{
+						_cscConnections.Add(new KeyValuePair<string, ContentSafetyClient>(csck, new ContentSafetyClient(new Uri(cscs), new AzureKeyCredential(csck))));
+					}
+					catch (Exception ex)
+					{
 
-			if (_cscstrings.Count > 0)
+						LogHelper.LogInformation(ex.Message, nameof(ContentSafetyHelper), nameof(AnalyzeImageAsync));
+						continue;
+					}
+				}
+			}
+			if (_cscConnections.Count > 0)
 			{
 				_retryPolicy = Policy.Handle<Exception>()
-					.WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+								.WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
 			}
 
 		}
 		public ContentSafetyClient GetNextContentSafetyClient()
 		{
-			if (_cscstrings.Count == 0)
+			if (_cscConnections.Count == 0)
 				throw new InvalidOperationException("No Content Safety clients are configured.");
 
 			int nextIndex;
 			do
 			{
-				nextIndex = (_lastUsedIndex + 1) % _cscstrings.Count;
-			} while (nextIndex == _lastUsedIndex && _cscstrings.Count > 1);
+				nextIndex = (_lastUsedIndex + 1) % _cscConnections.Count;
+			} while (nextIndex == _lastUsedIndex && _cscConnections.Count > 1);
 
 			_lastUsedIndex = nextIndex;
 
-			var keyValuePair = _cscstrings.ElementAt(nextIndex);
-			return new ContentSafetyClient(new Uri(keyValuePair.Value), new AzureKeyCredential(keyValuePair.Key));
+			var keyValuePair = _cscConnections.ElementAt(nextIndex);
+			return keyValuePair.Value;
 		}
 
 		public async Task<AnalyzeImageResult?> AnalyzeImageAsync(BinaryData inputImage)
