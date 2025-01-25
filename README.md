@@ -1,4 +1,4 @@
-# NovelCsamDetection
+# ovelCsamDetection
 
 ## Azure AI Content Safety
 
@@ -27,7 +27,7 @@
 - FFMpeg
   - The `ffmpeg.exe` file must be placed in the `NovelCsam.UI.Console` project directory, as shown in the picture. You can download the executable for various platforms, including Windows, from the link above.
   - [Download FFmpeg](https://ffmpeg.org/download.html)
-  - ![1737773654612](image/README/1737773654612.png)
+  - ![1737774750420](image/README/1737774750420.png)
 
 ## Getting Started
 

@@ -374,7 +374,7 @@
 			try
 			{
 				// Combine the base directory with the relative path to the FFmpeg executables
-				string ffmpegPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"ffmpeg-full\tools\ffmpeg\bin");
+				string ffmpegPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory);
 
 				// Set the FFmpeg executables path
 				FFmpeg.SetExecutablesPath(ffmpegPath);
