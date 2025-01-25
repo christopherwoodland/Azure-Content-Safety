@@ -2,8 +2,8 @@
 
 ## Azure AI Content Safety
 
-- https://learn.microsoft.com/en-us/azure/ai-services/content-safety/overview
-- https://learn.microsoft.com/en-us/azure/ai-services/content-safety/concepts/harm-categories?tabs=warning
+- [https://learn.microsoft.com/en-us/azure/ai-services/content-safety/overview]()
+- [https://learn.microsoft.com/en-us/azure/ai-services/content-safety/concepts/harm-categories?tabs=warning]()
 
 ## Overview
 
@@ -20,8 +20,14 @@
 ## Prerequisites
 
 - .NET 8 SDK
+  - [Download .NET 8 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0).
 - Azure Storage Account
 - Azure Content Safety Service
+  - [https://learn.microsoft.com/en-us/azure/ai-services/content-safety/overview]()
+- FFMpeg
+  - The `ffmpeg.exe` file must be placed in the `NovelCsam.UI.Console` project directory, as shown in the picture. You can download the executable for various platforms, including Windows, from the link above.
+  - [Download FFmpeg](https://ffmpeg.org/download.html)
+  - ![1737773654612](image/README/1737773654612.png)
 
 ## Getting Started
 
@@ -36,12 +42,12 @@ cd NovelCsamDetection/NovelCsam.UI.Console
 
 The application requires configuration for Azure Storage, Content Safety services, Azure SQL Database, Azure Cosmos DB, OpenAI Service, and Application Insights. Update the `appsettings.json` file with your Azure credentials and settings.
 
-If  ***InvokeOpenAI* **is set to True, then please populate:
+**If  ***InvokeOpenAI* **is set to True, then please populate:**
 
-* "OpenAiDeploymentName",
-* "OpenAiKey",
-* "OpenAiEndpoint",
-* "OpenAiModel"
+* **"OpenAiDeploymentName",**
+* **"OpenAiKey",**
+* **"OpenAiEndpoint",**
+* **"OpenAiModel"**
 
 ```
 {
