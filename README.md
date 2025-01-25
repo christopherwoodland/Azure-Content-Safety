@@ -25,7 +25,7 @@
 - Azure Content Safety Service
   - [https://learn.microsoft.com/en-us/azure/ai-services/content-safety/overview]()
 - FFMpeg
-  - The `ffmpeg.exe` file must be placed in the `NovelCsam.UI.Console` project directory, as shown in the picture. You can download the executable for various platforms, including Windows, from the link above.
+  - The `ffmpeg.exe, ffplay.exe, and ffprobe.exe` files must be placed in the `NovelCsam.UI.Console` project directory, as shown in the picture. You can download the executable for various platforms, including Windows, from the link above.
   - [Download FFmpeg](https://ffmpeg.org/download.html)
   - ![1737774750420](image/README/1737774750420.png)
 
