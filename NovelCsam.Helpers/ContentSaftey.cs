@@ -1,11 +1,12 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace NovelCsam.Helpers
 {
 	public class ContentSafetyHelper : IContentSafetyHelper
 	{
 		private ContentSafetyClient _csc;
-		private readonly List<KeyValuePair<string, ContentSafetyClient>> _cscConnections;
+		private readonly Dictionary<string, ContentSafetyClient> _cscConnections;
 		private static int _lastUsedIndex = -1;
 		private readonly AsyncRetryPolicy _retryPolicy;
 		private const int MAX_CONTENT_SAFETY_INSTANCES = 3;
@@ -23,7 +24,10 @@ namespace NovelCsam.Helpers
 				{
 					try
 					{
-						_cscConnections.Add(new KeyValuePair<string, ContentSafetyClient>(csck, new ContentSafetyClient(new Uri(cscs), new AzureKeyCredential(csck))));
+						if (!_cscConnections.ContainsKey(csck))
+						{
+							_cscConnections.Add(csck, new ContentSafetyClient(new Uri(cscs), new AzureKeyCredential(csck)));
+						}
 					}
 					catch (Exception ex)
 					{
