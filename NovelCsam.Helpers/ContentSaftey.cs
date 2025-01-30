@@ -65,6 +65,12 @@ namespace NovelCsam.Helpers
 		{
 			try
 			{
+				if (_retryPolicy == null)
+				{
+					var ex = new NullReferenceException("AnalyzeImageAsync _retryPolicy is null");
+					LogHelper.LogException(ex.Message, nameof(ContentSafetyHelper), nameof(AnalyzeImageAsync), ex);
+					return null;
+				}
 				return await _retryPolicy.ExecuteAsync(async () =>
 				{
 					_csc = GetNextContentSafetyClient();
@@ -80,6 +86,7 @@ namespace NovelCsam.Helpers
 						return null;
 					}
 				});
+
 			}
 			catch (Exception ex)
 			{
