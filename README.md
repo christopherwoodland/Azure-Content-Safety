@@ -53,8 +53,14 @@ The application requires configuration for Azure Storage, Content Safety service
 {
   "Azure": {
     "SqlConnectionString": "",
-    "ContentSafetyConnectionString": "",
-    "ContentSafetyConnectionKey": "",
+    "ContentSafety": {
+      "ContentSafetyConnectionString1": "",
+      "ContentSafetyConnectionKey1": "",
+      "ContentSafetyConnectionString2": "",
+      "ContentSafetyConnectionKey2": "",
+      "ContentSafetyConnectionString3": "",
+      "ContentSafetyConnectionKey3": ""
+    },
     "StorageAccountName": "",
     "StorageAccountKey": "",
     "StorageAccountUrl": "",
@@ -65,7 +71,8 @@ The application requires configuration for Azure Storage, Content Safety service
     "AppInsightsConnectionString": "",
     "AnalyzeFrameAzureFunctionUrl": "",
     "InvokeOpenAI": "",
-    "DebugToConsole":""
+    "DebugToConsole": "",
+    "AzureCloudDesignation": ""
   }
 }
 ```
