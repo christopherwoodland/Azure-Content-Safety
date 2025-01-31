@@ -1,4 +1,4 @@
-# ovelCsamDetection
+# NovelCsamDetection
 
 ## Azure AI Content Safety
 
