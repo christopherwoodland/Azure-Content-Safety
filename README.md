@@ -1,4 +1,4 @@
-# NovelCsamDetection
+# ContentSafteyDemo
 
 ## Azure AI Content Safety
 
