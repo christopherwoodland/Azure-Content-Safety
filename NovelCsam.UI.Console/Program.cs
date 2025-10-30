@@ -2,14 +2,6 @@ namespace NovelCsam.UI.Console;
 
 internal class Program
 {
-	#region Constants
-	private const string ContainerVideos = "videos";
-	private const string ContainerInput = "input";
-	private const string ContainerExtracted = "extracted";
-	private const string ContainerResults = "results";
-	private const int FilesPerFolder = 100;
-	#endregion
-
 	[STAThread]
 	public static async Task Main(string[] args)
 	{
@@ -46,7 +38,7 @@ internal class Program
 						var chosenFileName = ShowFileDialog();
 						if (!string.IsNullOrEmpty(chosenFileName))
 						{
-							await UploadVideoAsync(videoHelper, ContainerVideos, ContainerInput, chosenFileName);
+							await UploadVideoAsync(videoHelper, GetContainerName("CONTAINER_VIDEOS", "videos"), GetContainerName("CONTAINER_INPUT", "input"), chosenFileName);
 						}
 						break;
 
@@ -54,7 +46,7 @@ internal class Program
 						var chosenFolderName = ShowFolderBrowserDialog();
 						if (!string.IsNullOrEmpty(chosenFolderName))
 						{
-							var uploadImagesResult = await UploadImagesAsync(videoHelper, ContainerVideos, ContainerExtracted, chosenFolderName);
+							var uploadImagesResult = await UploadImagesAsync(videoHelper, GetContainerName("CONTAINER_VIDEOS", "videos"), GetContainerName("CONTAINER_EXTRACTED", "extracted"), chosenFolderName);
 							if (uploadImagesResult)
 							{
 								System.Console.WriteLine("****************************************************");
@@ -69,19 +61,19 @@ internal class Program
 						break;
 
 					case "3":
-						await ExtractFramesAsync(videoHelper, storageHelper, ContainerVideos, ContainerInput, ContainerExtracted);
+						await ExtractFramesAsync(videoHelper, storageHelper, GetContainerName("CONTAINER_VIDEOS", "videos"), GetContainerName("CONTAINER_INPUT", "input"), GetContainerName("CONTAINER_EXTRACTED", "extracted"));
 						break;
 
 					case "4":
-						await RunSafetyAnalysisAsync(videoHelper, storageHelper, ContainerVideos, ContainerExtracted, ContainerResults);
+						await RunSafetyAnalysisAsync(videoHelper, storageHelper, GetContainerName("CONTAINER_VIDEOS", "videos"), GetContainerName("CONTAINER_EXTRACTED", "extracted"), GetContainerName("CONTAINER_RESULTS", "results"));
 						break;
 
 					case "5":
-						await ExportRunAsync(videoHelper, storageHelper, sqlHelper, ContainerVideos, ContainerExtracted, ContainerResults, csvHelper);
+						await ExportRunAsync(videoHelper, storageHelper, sqlHelper, GetContainerName("CONTAINER_VIDEOS", "videos"), GetContainerName("CONTAINER_EXTRACTED", "extracted"), GetContainerName("CONTAINER_RESULTS", "results"), csvHelper);
 						break;
 
 					case "6":
-						await RunSafetyAnalysisDurableFunctionAsync(videoHelper, storageHelper, ContainerVideos, ContainerExtracted, ContainerResults);
+						await RunSafetyAnalysisDurableFunctionAsync(videoHelper, storageHelper, GetContainerName("CONTAINER_VIDEOS", "videos"), GetContainerName("CONTAINER_EXTRACTED", "extracted"), GetContainerName("CONTAINER_RESULTS", "results"));
 						break;
 				}
 				choice = PrintMenu();
@@ -113,6 +105,18 @@ internal class Program
 	}
 
 	/// <summary>
+	/// Gets container name from environment variable with default fallback.
+	/// </summary>
+	private static string GetContainerName(string envVarName, string defaultValue)
+		=> Environment.GetEnvironmentVariable(envVarName) ?? defaultValue;
+
+	/// <summary>
+	/// Gets FilesPerFolder setting from environment variable.
+	/// </summary>
+	private static int GetFilesPerFolder()
+		=> int.TryParse(Environment.GetEnvironmentVariable("FILES_PER_FOLDER"), out var value) ? value : 100;
+
+	/// <summary>
 	/// Loads application configuration from appsettings.json and sets environment variables.
 	/// </summary>
 	private static void SetEnvVariables()
@@ -137,6 +141,12 @@ internal class Program
 			{ "INVOKE_OPEN_AI", configuration["Azure:InvokeOpenAI"] },
 			{ "ANALYZE_FRAME_AZURE_FUNCTION_URL", configuration["Azure:AnalyzeFrameAzureFunctionUrl"] },
 			{ "DEBUG_TO_CONSOLE", configuration["Azure:DebugToConsole"] },
+
+			{ "CONTAINER_VIDEOS", configuration["Azure:Storage:ContainerVideos"] ?? "videos" },
+			{ "CONTAINER_INPUT", configuration["Azure:Storage:ContainerInput"] ?? "input" },
+			{ "CONTAINER_EXTRACTED", configuration["Azure:Storage:ContainerExtracted"] ?? "extracted" },
+			{ "CONTAINER_RESULTS", configuration["Azure:Storage:ContainerResults"] ?? "results" },
+			{ "FILES_PER_FOLDER", configuration["Azure:Storage:FilesPerFolder"] ?? "100" },
 
 			{ "CONTENT_SAFETY_CONNECTION_STRING1", configuration["Azure:ContentSafety:ContentSafetyConnectionString1"] },
 			{ "CONTENT_SAFETY_CONNECTION_KEY1", configuration["Azure:ContentSafety:ContentSafetyConnectionKey1"] },
@@ -288,7 +298,7 @@ internal class Program
 		{
 			var uploadTasks = imageFiles.Select((imageFile, index) =>
 			{
-				if (index > 0 && index % FilesPerFolder == 0)
+				if (index > 0 && index % GetFilesPerFolder() == 0)
 				{
 					folderIndex++;
 					currentFolderName = GenerateFolderName(folderIndex);

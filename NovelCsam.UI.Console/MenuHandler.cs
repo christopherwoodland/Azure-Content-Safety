@@ -5,16 +5,22 @@ namespace NovelCsam.UI.Console
 	/// </summary>
 	internal class MenuHandler
 	{
-		private const int FilesPerFolder = 100;
-		private const string ContainerVideos = "videos";
-		private const string ContainerInput = "input";
-		private const string ContainerExtracted = "extracted";
-		private const string ContainerResults = "results";
-
 		private readonly IVideoHelper _videoHelper;
 		private readonly IStorageHelper _storageHelper;
 		private readonly IAzureSQLHelper _sqlHelper;
 		private readonly ICsvExporter _csvHelper;
+
+		/// <summary>
+		/// Gets container name from environment variable with default fallback.
+		/// </summary>
+		private static string GetContainerName(string envVarName, string defaultValue)
+			=> Environment.GetEnvironmentVariable(envVarName) ?? defaultValue;
+
+		/// <summary>
+		/// Gets FilesPerFolder setting from environment variable.
+		/// </summary>
+		private static int GetFilesPerFolder()
+			=> int.TryParse(Environment.GetEnvironmentVariable("FILES_PER_FOLDER"), out var value) ? value : 100;
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="MenuHandler"/> class.
@@ -144,7 +150,7 @@ namespace NovelCsam.UI.Console
 			var done = "";
 			await progressBar.RunWithProgressBarAsync(async () =>
 			{
-				done = await _videoHelper.UploadFileToBlobAsync(ContainerVideos, ContainerInput, selectedFilePath);
+				done = await _videoHelper.UploadFileToBlobAsync(GetContainerName("CONTAINER_VIDEOS", "videos"), GetContainerName("CONTAINER_INPUT", "input"), selectedFilePath);
 			});
 			System.Console.WriteLine($"Selected file uploaded: {done}");
 			System.Console.WriteLine($"----------------------------------------------------------------------------\r\n");
@@ -179,7 +185,7 @@ namespace NovelCsam.UI.Console
 			{
 				var uploadTasks = imageFiles.Select((imageFile, index) =>
 				{
-					if (index > 0 && index % FilesPerFolder == 0)
+					if (index > 0 && index % GetFilesPerFolder() == 0)
 					{
 						folderIndex++;
 						currentFolderName = GenerateFolderName(folderIndex);
@@ -189,7 +195,7 @@ namespace NovelCsam.UI.Console
 
 					return Task.Run(async () =>
 					{
-						var uploadPath = await _videoHelper.UploadFileToBlobAsync(ContainerVideos, ContainerInput, 
+						var uploadPath = await _videoHelper.UploadFileToBlobAsync(GetContainerName("CONTAINER_VIDEOS", "videos"), GetContainerName("CONTAINER_INPUT", "input"), 
 							imageFile, currentFolderName, true, timestamp, customFolderName);
 						System.Console.WriteLine($"Selected file Upload Path: {uploadPath}");
 						LogHelper.LogInformation($"Uploaded: {uploadPath}", nameof(MenuHandler), nameof(UploadImagesAsync));
@@ -209,7 +215,7 @@ namespace NovelCsam.UI.Console
 
 		private async Task ExtractFramesAsync()
 		{
-			var blobList = await _storageHelper.ListBlobsInFolderWithResizeAsync(ContainerVideos, ContainerInput, 3, false) ?? [];
+			var blobList = await _storageHelper.ListBlobsInFolderWithResizeAsync(GetContainerName("CONTAINER_VIDEOS", "videos"), GetContainerName("CONTAINER_INPUT", "input"), 3, false) ?? [];
 			if (blobList?.Count == 0)
 			{
 				System.Console.WriteLine("No files available for frame extraction.");
@@ -231,8 +237,8 @@ namespace NovelCsam.UI.Console
 				var done = false;
 				await progressBar.RunWithProgressBarAsync(async () =>
 				{
-					done = await _videoHelper.UploadExtractedFramesToBlobAsync(1, fileName, ContainerVideos, 
-						folderPath, ContainerExtracted, fileName);
+					done = await _videoHelper.UploadExtractedFramesToBlobAsync(1, fileName, GetContainerName("CONTAINER_VIDEOS", "videos"), 
+						folderPath, GetContainerName("CONTAINER_EXTRACTED", "extracted"), fileName);
 				});
 
 				if (done)
@@ -251,7 +257,7 @@ namespace NovelCsam.UI.Console
 
 		private async Task RunSafetyAnalysisAsync()
 		{
-			var dirList = await _storageHelper.ListDirectoriesInFolderAsync(ContainerVideos, ContainerExtracted, 2) ?? [];
+			var dirList = await _storageHelper.ListDirectoriesInFolderAsync(GetContainerName("CONTAINER_VIDEOS", "videos"), GetContainerName("CONTAINER_EXTRACTED", "extracted"), 2) ?? [];
 			if (dirList?.Count == 0)
 			{
 				System.Console.WriteLine("There are no directories containing images for processing.");
@@ -272,8 +278,8 @@ namespace NovelCsam.UI.Console
 				var runId = "";
 				await progressBar.RunWithProgressBarAsync(async () =>
 				{
-					runId = await _videoHelper.UploadFrameResultsAsync(ContainerVideos,
-						chosenDirValue, ContainerResults,
+					runId = await _videoHelper.UploadFrameResultsAsync(GetContainerName("CONTAINER_VIDEOS", "videos"),
+						chosenDirValue, GetContainerName("CONTAINER_RESULTS", "results"),
 						true, getSummary, getChildYesNo);
 				});
 
@@ -289,7 +295,7 @@ namespace NovelCsam.UI.Console
 
 		private async Task RunSafetyAnalysisDurableFunctionAsync()
 		{
-			var dirList = await _storageHelper.ListDirectoriesInFolderAsync(ContainerVideos, ContainerExtracted, 2) ?? [];
+			var dirList = await _storageHelper.ListDirectoriesInFolderAsync(GetContainerName("CONTAINER_VIDEOS", "videos"), GetContainerName("CONTAINER_EXTRACTED", "extracted"), 2) ?? [];
 			if (dirList?.Count == 0)
 			{
 				System.Console.WriteLine("There are no directories containing images for processing.");
@@ -310,8 +316,8 @@ namespace NovelCsam.UI.Console
 				var runId = Guid.NewGuid().ToString();
 				await progressBar.RunWithProgressBarAsync(async () =>
 				{
-					await _videoHelper.UploadFrameResultsDurableFunctionAsync(ContainerVideos,
-						chosenDirValue, ContainerResults,
+					await _videoHelper.UploadFrameResultsDurableFunctionAsync(GetContainerName("CONTAINER_VIDEOS", "videos"),
+						chosenDirValue, GetContainerName("CONTAINER_RESULTS", "results"),
 						true, getSummary, getChildYesNo, runId);
 				});
 
@@ -332,7 +338,7 @@ namespace NovelCsam.UI.Console
 
 		private async Task ExportRunAsync()
 		{
-			var dirList = await _storageHelper.ListDirectoriesInFolderAsync(ContainerVideos, ContainerExtracted, 2) ?? [];
+			var dirList = await _storageHelper.ListDirectoriesInFolderAsync(GetContainerName("CONTAINER_VIDEOS", "videos"), GetContainerName("CONTAINER_EXTRACTED", "extracted"), 2) ?? [];
 			if (dirList?.Count == 0)
 			{
 				System.Console.WriteLine("There are no directories containing images for processing.");
