@@ -1,6 +1,3 @@
-using Newtonsoft.Json;
-using NovelCsam.Models.Orchestration;
-
 namespace NovelCsam.Functions.Functions
 {
 	public class ImageProcessingOrchestrator

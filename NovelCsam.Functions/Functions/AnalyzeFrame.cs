@@ -8,7 +8,9 @@ namespace NovelCsam.Functions.Functions
 		private readonly IContentSafetyHelper _csh;
 		private readonly IAzureSQLHelper _ash;
 		private readonly IVideoHelper _videoHelper;
+		private readonly IResultExporter _resultExporter;
 		private readonly AsyncRetryPolicy _retryPolicy;
+		private readonly FunctionSettings _settings;
 		private enum FFMPEG_MODE { VSEG = 0, FSEG = 1 }
 		private const string HATE = "hate";
 		private const string SELF_HARM = "selfharm";
@@ -16,11 +18,13 @@ namespace NovelCsam.Functions.Functions
 		private const string SEXUAL = "sexual";
 		private string? _ioapi = null;
 
-		public AnalyzeFrame(IStorageHelper sth, IContentSafetyHelper csh, IAzureSQLHelper ash, IVideoHelper videoHelper)
+		public AnalyzeFrame(IStorageHelper sth, IContentSafetyHelper csh, IAzureSQLHelper ash, IVideoHelper videoHelper, IResultExporter resultExporter, FunctionSettings settings)
 		{
 			_sth = sth;
 			_csh = csh;
 			_ash = ash;
+			_resultExporter = resultExporter;
+			_settings = settings;
 			_ioapi = Environment.GetEnvironmentVariable("INVOKE_OPEN_AI");
 
 
@@ -46,7 +50,7 @@ namespace NovelCsam.Functions.Functions
 
 			_retryPolicy = Policy
 				.Handle<HttpRequestException>(ex => ex.StatusCode == (HttpStatusCode)429)
-				.WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+				.WaitAndRetryAsync(_settings.RetryMaxAttempts, retryAttempt => TimeSpan.FromSeconds(Math.Pow(_settings.RetryBackoffMultiplier, retryAttempt)),
 					(exception, timeSpan, retryCount, context) =>
 					{
 						LogHelper.LogInformation($"Retry {retryCount} encountered an error: {exception.Message}. Waiting {timeSpan} before next retry.", nameof(AnalyzeFrame), "Constructor");
@@ -59,15 +63,15 @@ namespace NovelCsam.Functions.Functions
 			try
 			{
 				var frameBinaryData = new BinaryData(item.Frame.Data);
-				var air = await _retryPolicy.ExecuteAsync(() => _videoHelper.GetContentSafteyDetailsAsync(frameBinaryData));
+				var air = await _retryPolicy.ExecuteAsync(() => _videoHelper.GetContentSafetyDetailsAsync(frameBinaryData));
 				
 				var summary = "";
 				var childYesNo = "";
 				
 				if (!string.IsNullOrEmpty(_ioapi) && _ioapi.ToLower() == "true")
 				{
-					summary = item.GetSummary ? await _retryPolicy.ExecuteAsync(() => _videoHelper.SummarizeImageAsync(frameBinaryData, "Can you do a detail analysis and tell me all the minute details about this image. Use no more than 450 words!!!")) : string.Empty;
-					childYesNo = item.GetChildYesNo ? await _retryPolicy.ExecuteAsync(() => _videoHelper.SummarizeImageAsync(frameBinaryData, "Is there a younger person or child in this image? If you can't make a determination ANSWER No, ONLY ANSWER Yes or No!!")) : string.Empty;
+					summary = item.GetSummary ? await _retryPolicy.ExecuteAsync(() => _videoHelper.SummarizeImageAsync(frameBinaryData, _settings.DetailedAnalysisPrompt)) : string.Empty;
+					childYesNo = item.GetChildYesNo ? await _retryPolicy.ExecuteAsync(() => _videoHelper.SummarizeImageAsync(frameBinaryData, _settings.ChildDetectionPrompt)) : string.Empty;
 
 				}
 				var md5Hash = _videoHelper.CreateMD5Hash(frameBinaryData);
@@ -105,9 +109,24 @@ namespace NovelCsam.Functions.Functions
 						}
 					}
 				}
-				summary = summary.Contains("429") ? "" : summary;
-				childYesNo = childYesNo.Contains("429") ? "" : childYesNo;
-				await _ash.CreateFrameResult(newItem);
+				summary = summary.Contains(_settings.RateLimitErrorCode) ? "" : summary;
+				childYesNo = childYesNo.Contains(_settings.RateLimitErrorCode) ? "" : childYesNo;
+				
+				// Persist to SQL database if enabled
+				if (_settings.EnableSqlPersistence)
+				{
+					await _ash.CreateFrameResult(newItem);
+				}
+				
+				// Export to JSON if enabled
+				if (_settings.EnableJsonExport)
+				{
+					await _resultExporter.ExportFrameResultAsJsonAsync(
+						newItem,
+						_settings.JsonExportContainerName,
+						_settings.JsonExportFolderPath);
+				}
+				
 				//await _ash.InsertBase64(newItem); I don't think we need this, will confirm...
 				return item.RunId;
 			}

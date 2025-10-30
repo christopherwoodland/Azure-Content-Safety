@@ -14,10 +14,23 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="MSTest.TestAdapter" Version="3.1.1" />
     <PackageReference Include="MSTest.TestFramework" Version="3.1.1" />
+    <PackageReference Include="Moq" Version="4.20.70" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../NovelCsam.Helpers/NovelCsam.Helpers.csproj" />
+    <ProjectReference Include="../NovelCsam.Models/NovelCsam.Models.csproj" />
+    <ProjectReference Include="../NovelCsam.Functions/NovelCsam.Functions.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
+    <Using Include="Moq" />
+    <Using Include="Moq.Language.Flow" />
+    <Using Include="NovelCsam.Helpers" />
+    <Using Include="NovelCsam.Helpers.Interfaces" />
+    <Using Include="NovelCsam.Models" />
+    <Using Include="NovelCsam.Functions.Configuration" />
   </ItemGroup>
 
 </Project>

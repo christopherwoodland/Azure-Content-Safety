@@ -361,6 +361,39 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/NovelCsam.UI.Console/appsettings.json
+
+# Secret and Configuration Files
+# Local settings with secrets (Azure Functions)
 /NovelCsam.Functions/local.settings.json
+/NovelCsam.Functions/local.settings.*.json
+
+# Application settings with connection strings and secrets
+/NovelCsam.UI.Console/appsettings.json
+/NovelCsam.UI.Console/appsettings.*.json
 /NovelCsam.Functions/appsettings.json
+/NovelCsam.Functions/appsettings.*.json
+
+# User secrets configuration (Visual Studio feature)
+**/Properties/launchSettings.json
+
+# Environment-specific configuration
+*.env
+*.env.local
+*.env.*.local
+
+# User secrets (Visual Studio user secrets feature)
+**/[Uu]ser[Ss]ecrets/
+**/obj/Debug/[Uu]ser[Ss]ecrets/
+
+# Infrastructure and deployment scripts with secrets
+Infrastructure/Azure\ Functions/Set-AppSettings.ps1
+
+# SSL certificates and keys
+*.pfx
+*.pem
+*.key
+*.crt
+
+# API keys and tokens
+**/secrets/**
+!**/secrets/.gitkeep

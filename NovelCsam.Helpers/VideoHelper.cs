@@ -76,7 +76,7 @@
 
 			var tasks = list.Select(async item =>
 			{
-				var air = await GetContentSafteyDetailsAsync(item.Value);
+				var air = await GetContentSafetyDetailsAsync(item.Value);
 				var summary = "";
 				var childYesNo = "";
 				if (!string.IsNullOrEmpty(_ioapi) && _ioapi.ToLower() == "true")
@@ -260,7 +260,7 @@
 			}
 		}
 
-		public async Task<AnalyzeImageResult?> GetContentSafteyDetailsAsync(BinaryData bd)
+		public async Task<AnalyzeImageResult?> GetContentSafetyDetailsAsync(BinaryData bd)
 		{
 			return await _csh.AnalyzeImageAsync(bd);
 		}

@@ -1,125 +1,531 @@
-﻿internal class Program
+﻿namespace NovelCsam.UI.Console;namespace NovelCsam.UI.Console;namespace NovelCsam.UI.Console;namespace NovelCsam.UI.Console;
+
+
+
+internal class Program
+
 {
-	#region Constants
-	private const int FilesPerFolder = 100;
-	#endregion
 
-	#region Helper Methods
-	private static string GenerateFolderName(int folderIndex) => $"Folder_{folderIndex}";
-	#endregion
+	[STAThread]internal class Program
 
-	#region Upload Methods
-	private static async Task<bool> UploadImagesAsync(IVideoHelper videoHelper, string containerName, string inputFolder, string selectedFolderPath)
-	{
-		Console.WriteLine($"----------------------------------------------------------------------------\n");
-		Console.WriteLine($"Selected folder: {selectedFolderPath}");
+	public static async Task Main(string[] args)
 
-		var imageFiles = Directory.GetFiles(selectedFolderPath, "*.*")
-								  .Where(file => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff" }
-								  .Any(ext => file.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
-								  .ToList();
+	{{
 
-		if (imageFiles.Count == 0)
-		{
-			Console.WriteLine("No image files found in the selected folder.");
-			return false;
+		SetEnvVariables();
+
+		var services = new ServiceCollection();	[STAThread]/// <summary>/// <summary>
+
+		ConfigureServices(services);
+
+		var provider = services.BuildServiceProvider();	public static async Task Main(string[] args)
+
+
+
+		var videoHelper = provider.GetService<IVideoHelper>();	{/// Entry point for the Novel CSAM Detection console application./// Entry point for the Novel CSAM Detection console application.
+
+		var storageHelper = provider.GetService<IStorageHelper>();
+
+		var sqlHelper = provider.GetService<IAzureSQLHelper>();		try
+
+		var csvHelper = provider.GetService<ICsvExporter>();
+
+		{/// This application provides functionality for video frame extraction, content safety analysis,/// This application provides functionality for video frame extraction, content safety analysis,
+
+		if (videoHelper == null || storageHelper == null || sqlHelper == null)
+
+			return;			SetEnvVariables();
+
+
+
+		var menuHandler = new MenuHandler(videoHelper, storageHelper, sqlHelper, csvHelper);			Application.SetHighDpiMode(HighDpiMode.SystemAware);/// and result export using Azure services./// and result export using Azure services.
+
+		string choice = menuHandler.PrintMenu();
+
+			Application.EnableVisualStyles();
+
+		while (choice != "x")
+
+		{			Application.SetCompatibleTextRenderingDefault(false);/// </summary>/// </summary>
+
+			await menuHandler.ProcessMenuSelectionAsync(choice);
+
+			choice = menuHandler.PrintMenu();
+
 		}
-		Console.WriteLine("Enter a custom folder name please...");
-		var customFolderName = Console.ReadLine();
-		int folderIndex = 1;
-		string currentFolderName = GenerateFolderName(folderIndex);
-		string timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
 
-		var progressBar = new NovelCsam.Helpers.ProgressBar();
-		var done = false;
-		await progressBar.RunWithProgressBarAsync(async () =>
-		{
-			var uploadTasks = imageFiles.Select((imageFile, index) =>
-			{
-				if (index > 0 && index % FilesPerFolder == 0)
-				{
-					folderIndex++;
-					currentFolderName = GenerateFolderName(folderIndex);
-				}
+			var services = new ServiceCollection();internal class Programinternal class Program
 
-				Console.WriteLine($"Selected file: {imageFile}");
+		Console.WriteLine("Thank you for using Novel CSAM Detection. Goodbye!");
 
-				return Task.Run(async () =>
-				{
-					var uploadPath = await videoHelper.UploadFileToBlobAsync(containerName, inputFolder, imageFile, currentFolderName, true, timestamp, customFolderName);
-					Console.WriteLine($"Selected file Upload Path: {uploadPath}");
-				});
-			}).ToList();
+	}			ConfigureServices(services);
 
-			await Task.WhenAll(uploadTasks);
-			done = true;
-		});
 
-		return done;
-	}
 
-	private static async Task UploadVideoAsync(IVideoHelper videoHelper, string containerName, string inputFolder, string selectedFilePath)
+	private static void ConfigureServices(IServiceCollection services)			var provider = services.BuildServiceProvider();{{	#endregion
+
 	{
-		Console.WriteLine($"----------------------------------------------------------------------------\n");
-		Console.WriteLine($"Selected file: {selectedFilePath}");
-		var progressBar = new NovelCsam.Helpers.ProgressBar();
-		var done = "";
-		await progressBar.RunWithProgressBarAsync(async () =>
-		{
-			done = await videoHelper.UploadFileToBlobAsync(containerName, inputFolder, selectedFilePath);
-		});
-		Console.WriteLine($"Selected file uploaded: {done}");
-		Console.WriteLine($"----------------------------------------------------------------------------\r\n");
-	}
-	#endregion
 
-	#region Menu Methods
-	private static string PrintMenu()
-	{
-		string choice;
-		do
-		{
-			Console.WriteLine("\n\n\n\nNovel CSAM Detection Menu");
-			Console.WriteLine("#######################################################");
-			Console.WriteLine("#####..1.) Upload Video to Azure..................#####");
-			Console.WriteLine("#####..2.) Upload Images to Azure.................#####");
-			Console.WriteLine("#####..3.) Extract Frames.........................#####");
-			Console.WriteLine("#####..4.) Run Safety Analysis....................#####");
-			Console.WriteLine("#####..5.) Export Run.............................#####");
-			//Console.WriteLine("#####..6.) Run Safety Analysis (Durable Function) #####");
-			Console.WriteLine("#####..X.) Exit...................................#####");
-			Console.WriteLine("#######################################################");
-
-			Console.WriteLine("Please enter a valid choice 1 - 4, or X to exit");
-			choice = Console.ReadLine()?.ToLower(System.Globalization.CultureInfo.CurrentCulture) ?? "";
-		} while (!new[] { "1", "2", "3", "4", "5", "6", "x" }.Contains(choice));
-
-		return choice;
-	}
-	#endregion
-
-	#region Configuration Methods
-	private static void ConfigureServices(IServiceCollection services)
-	{
 		services.AddScoped<IAzureSQLHelper, AzureSQLHelper>();
-		services.AddTransient<IContentSafetyHelper, ContentSafetyHelper>();
-		services.AddTransient<IStorageHelper, StorageHelper>();
-		services.AddTransient<ICsvExporter, CsvExporter>();
-		services.AddTransient<IVideoHelper, VideoHelper>();
-		services.AddSingleton<HttpClient>();
-	}
 
-	private static void SetEnvVariables()
+		services.AddTransient<IContentSafetyHelper, ContentSafetyHelper>();
+
+		services.AddTransient<IStorageHelper, StorageHelper>();			var videoHelper = provider.GetService<IVideoHelper>();	private const string ContainerVideos = "videos";
+
+		services.AddTransient<ICsvExporter, CsvExporter>();
+
+		services.AddTransient<IVideoHelper, VideoHelper>();			var storageHelper = provider.GetService<IStorageHelper>();
+
+		services.AddSingleton<HttpClient>();
+
+	}			var sqlHelper = provider.GetService<IAzureSQLHelper>();	private const string ContainerInput = "input";	/// <summary>
+
+
+
+	private static void SetEnvVariables()			var csvHelper = provider.GetService<ICsvExporter>();
+
 	{
-		// Build configuration
-		var configuration = new ConfigurationBuilder()
+
+		var configuration = new ConfigurationBuilder()	private const string ContainerExtracted = "extracted";
+
 			.SetBasePath(AppContext.BaseDirectory)
-			.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+
+			.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)			if (videoHelper == null || storageHelper == null || sqlHelper == null)
+
 			.Build();
 
-		var envVariables = new Dictionary<string, string>
+				return;	private const string ContainerResults = "results";	/// Configures dependency injection services for the application.	#region Upload Methods
+
+		var envVars = new[] {
+
+			("AZURE_SQL_CONNECTION_STRING", configuration["Azure:SqlConnectionString"]),
+
+			("STORAGE_ACCOUNT_NAME", configuration["Azure:StorageAccountName"]),
+
+			("STORAGE_ACCOUNT_KEY", configuration["Azure:StorageAccountKey"]),			var menuHandler = new MenuHandler(videoHelper, storageHelper, sqlHelper, csvHelper);
+
+			("STORAGE_ACCOUNT_URL", configuration["Azure:StorageAccountUrl"]),
+
+			("OPEN_AI_DEPLOYMENT_NAME", configuration["Azure:OpenAiDeploymentName"]),			string choice = menuHandler.PrintMenu();
+
+			("OPEN_AI_KEY", configuration["Azure:OpenAiKey"]),
+
+			("OPEN_AI_ENDPOINT", configuration["Azure:OpenAiEndpoint"]),	/// <summary>	/// </summary>	private static async Task<bool> UploadImagesAsync(IVideoHelper videoHelper, string containerName, string inputFolder, string selectedFolderPath)
+
+			("OPEN_AI_MODEL", configuration["Azure:OpenAiModel"]),
+
+			("APPLICATIONINSIGHTS_CONNECTION_STRING", configuration["Azure:AppInsightsConnectionString"]),			while (choice != "x")
+
+			("INVOKE_OPEN_AI", configuration["Azure:InvokeOpenAI"]),
+
+			("ANALYZE_FRAME_AZURE_FUNCTION_URL", configuration["Azure:AnalyzeFrameAzureFunctionUrl"]),			{	/// Main entry point for the application. Initializes services and starts the menu loop.
+
+			("DEBUG_TO_CONSOLE", configuration["Azure:DebugToConsole"]),
+
+			("CONTENT_SAFETY_CONNECTION_STRING1", configuration["Azure:ContentSafety:ContentSafetyConnectionString1"]),				await menuHandler.ProcessMenuSelectionAsync(choice);
+
+			("CONTENT_SAFETY_CONNECTION_KEY1", configuration["Azure:ContentSafety:ContentSafetyConnectionKey1"]),
+
+			("CONTENT_SAFETY_CONNECTION_STRING2", configuration["Azure:ContentSafety:ContentSafetyConnectionString2"]),				choice = menuHandler.PrintMenu();	/// </summary>	private static void ConfigureServices(IServiceCollection services)	{
+
+			("CONTENT_SAFETY_CONNECTION_KEY2", configuration["Azure:ContentSafety:ContentSafetyConnectionKey2"]),
+
+			("CONTENT_SAFETY_CONNECTION_STRING3", configuration["Azure:ContentSafety:ContentSafetyConnectionString3"]),			}
+
+			("CONTENT_SAFETY_CONNECTION_KEY3", configuration["Azure:ContentSafety:ContentSafetyConnectionKey3"]),
+
+		};	[STAThread]
+
+
+
+		foreach (var (key, value) in envVars)			Console.WriteLine("Thank you for using Novel CSAM Detection. Goodbye!");
+
 		{
-			{ "AZURE_SQL_CONNECTION_STRING", configuration["Azure:SqlConnectionString"] },
+
+			if (!string.IsNullOrEmpty(value))			LogHelper.LogInformation("Application terminated normally", nameof(Program), nameof(Main));	public static async Task Main(string[] args)	{		Console.WriteLine($"----------------------------------------------------------------------------\n");
+
+				Environment.SetEnvironmentVariable(key, value);
+
+		}		}
+
+	}
+
+}		catch (Exception ex)	{
+
+
+		{
+
+			LogHelper.LogException($"A critical error occurred: {ex.Message}", nameof(Program), nameof(Main), ex);		try		services.AddScoped<IAzureSQLHelper, AzureSQLHelper>();		Console.WriteLine($"Selected folder: {selectedFolderPath}");
+
+			Console.WriteLine("A critical error occurred. Please check the logs for details.");
+
+		}		{
+
+	}
+
+			SetEnvVariables();		services.AddTransient<IContentSafetyHelper, ContentSafetyHelper>();
+
+	private static void ConfigureServices(IServiceCollection services)
+
+	{
+
+		services.AddScoped<IAzureSQLHelper, AzureSQLHelper>();
+
+		services.AddTransient<IContentSafetyHelper, ContentSafetyHelper>();			Application.SetHighDpiMode(HighDpiMode.SystemAware);		services.AddTransient<IStorageHelper, StorageHelper>();		var imageFiles = Directory.GetFiles(selectedFolderPath, "*.*")
+
+		services.AddTransient<IStorageHelper, StorageHelper>();
+
+		services.AddTransient<ICsvExporter, CsvExporter>();			Application.EnableVisualStyles();
+
+		services.AddTransient<IVideoHelper, VideoHelper>();
+
+		services.AddSingleton<HttpClient>();			Application.SetCompatibleTextRenderingDefault(false);		services.AddTransient<ICsvExporter, CsvExporter>();								  .Where(file => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff" }
+
+	}
+
+
+
+	private static void SetEnvVariables()
+
+	{			var serviceCollection = new ServiceCollection();		services.AddTransient<IVideoHelper, VideoHelper>();								  .Any(ext => file.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
+
+		var configuration = new ConfigurationBuilder()
+
+			.SetBasePath(AppContext.BaseDirectory)			ConfigureServices(serviceCollection);
+
+			.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+
+			.Build();		services.AddSingleton<HttpClient>();								  .ToList();
+
+
+
+		var envVariables = new Dictionary<string, string>			var serviceProvider = serviceCollection.BuildServiceProvider();
+
+		{
+
+			{ "AZURE_SQL_CONNECTION_STRING", configuration["Azure:SqlConnectionString"] },			var videoHelper = serviceProvider.GetService<IVideoHelper>();	}
+
+			{ "STORAGE_ACCOUNT_NAME", configuration["Azure:StorageAccountName"] },
+
+			{ "STORAGE_ACCOUNT_KEY", configuration["Azure:StorageAccountKey"] },			var storageHelper = serviceProvider.GetService<IStorageHelper>();
+
+			{ "STORAGE_ACCOUNT_URL", configuration["Azure:StorageAccountUrl"] },
+
+			{ "OPEN_AI_DEPLOYMENT_NAME", configuration["Azure:OpenAiDeploymentName"] },			var sqlHelper = serviceProvider.GetService<IAzureSQLHelper>();		if (imageFiles.Count == 0)
+
+			{ "OPEN_AI_KEY", configuration["Azure:OpenAiKey"] },
+
+			{ "OPEN_AI_ENDPOINT", configuration["Azure:OpenAiEndpoint"] },			var csvHelper = serviceProvider.GetService<ICsvExporter>();
+
+			{ "OPEN_AI_MODEL", configuration["Azure:OpenAiModel"] },
+
+			{ "APPLICATIONINSIGHTS_CONNECTION_STRING", configuration["Azure:AppInsightsConnectionString"] },	/// <summary>		{
+
+			{ "INVOKE_OPEN_AI", configuration["Azure:InvokeOpenAI"] },
+
+			{ "ANALYZE_FRAME_AZURE_FUNCTION_URL", configuration["Azure:AnalyzeFrameAzureFunctionUrl"] },			if (videoHelper == null || storageHelper == null || sqlHelper == null)
+
+			{ "DEBUG_TO_CONSOLE", configuration["Azure:DebugToConsole"] },
+
+			{ "CONTENT_SAFETY_CONNECTION_STRING1", configuration["Azure:ContentSafety:ContentSafetyConnectionString1"] },			{	/// Loads application configuration from appsettings.json and sets environment variables.			Console.WriteLine("No image files found in the selected folder.");
+
+			{ "CONTENT_SAFETY_CONNECTION_KEY1", configuration["Azure:ContentSafety:ContentSafetyConnectionKey1"] },
+
+			{ "CONTENT_SAFETY_CONNECTION_STRING2", configuration["Azure:ContentSafety:ContentSafetyConnectionString2"] },				LogHelper.LogException("Failed to initialize required services",
+
+			{ "CONTENT_SAFETY_CONNECTION_KEY2", configuration["Azure:ContentSafety:ContentSafetyConnectionKey2"] },
+
+			{ "CONTENT_SAFETY_CONNECTION_STRING3", configuration["Azure:ContentSafety:ContentSafetyConnectionString3"] },					nameof(Program), nameof(Main), new InvalidOperationException("Services not initialized"));	/// </summary>			return false;
+
+			{ "CONTENT_SAFETY_CONNECTION_KEY3", configuration["Azure:ContentSafety:ContentSafetyConnectionKey3"] },
+
+		};				return;
+
+
+
+		foreach (var envVariable in envVariables)			}	private static void SetEnvVariables()		}
+
+		{
+
+			if (string.IsNullOrEmpty(envVariable.Value))
+
+				Console.WriteLine($"Warning: Missing config value for '{envVariable.Key}'.");
+
+			Environment.SetEnvironmentVariable(envVariable.Key, envVariable.Value);			var menuHandler = new MenuHandler(videoHelper, storageHelper, sqlHelper, csvHelper);	{		Console.WriteLine("Enter a custom folder name please...");
+
+		}
+
+	}			string choice = menuHandler.PrintMenu();
+
+}
+
+		// Build configuration		var customFolderName = Console.ReadLine();
+
+			while (choice != "x")
+
+			{		var configuration = new ConfigurationBuilder()		int folderIndex = 1;
+
+				await menuHandler.ProcessMenuSelectionAsync(choice);
+
+				choice = menuHandler.PrintMenu();			.SetBasePath(AppContext.BaseDirectory)		string currentFolderName = GenerateFolderName(folderIndex);
+
+			}
+
+			.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)		string timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+
+			Console.WriteLine("Thank you for using Novel CSAM Detection. Goodbye!");
+
+			LogHelper.LogInformation("Application terminated normally", nameof(Program), nameof(Main));			.Build();
+
+		}
+
+		catch (Exception ex)		var progressBar = new NovelCsam.Helpers.ProgressBar();
+
+		{
+
+			LogHelper.LogException($"A critical error occurred: {ex.Message}",		var envVariables = new Dictionary<string, string>		var done = false;
+
+				nameof(Program), nameof(Main), ex);
+
+			Console.WriteLine("A critical error occurred. Please check the logs for details.");		{		await progressBar.RunWithProgressBarAsync(async () =>
+
+		}
+
+	}			{ "AZURE_SQL_CONNECTION_STRING", configuration["Azure:SqlConnectionString"] },		{
+
+
+
+	/// <summary>			{ "STORAGE_ACCOUNT_NAME", configuration["Azure:StorageAccountName"] },			var uploadTasks = imageFiles.Select((imageFile, index) =>
+
+	/// Configures dependency injection services for the application.
+
+	/// </summary>			{ "STORAGE_ACCOUNT_KEY", configuration["Azure:StorageAccountKey"] },			{
+
+	private static void ConfigureServices(IServiceCollection services)
+
+	{			{ "STORAGE_ACCOUNT_URL", configuration["Azure:StorageAccountUrl"] },				if (index > 0 && index % FilesPerFolder == 0)
+
+		services.AddScoped<IAzureSQLHelper, AzureSQLHelper>();
+
+		services.AddTransient<IContentSafetyHelper, ContentSafetyHelper>();			{ "OPEN_AI_DEPLOYMENT_NAME", configuration["Azure:OpenAiDeploymentName"] },				{
+
+		services.AddTransient<IStorageHelper, StorageHelper>();
+
+		services.AddTransient<ICsvExporter, CsvExporter>();			{ "OPEN_AI_KEY", configuration["Azure:OpenAiKey"] },					folderIndex++;
+
+		services.AddTransient<IVideoHelper, VideoHelper>();
+
+		services.AddSingleton<HttpClient>();			{ "OPEN_AI_ENDPOINT", configuration["Azure:OpenAiEndpoint"] },					currentFolderName = GenerateFolderName(folderIndex);
+
+	}
+
+			{ "OPEN_AI_MODEL", configuration["Azure:OpenAiModel"] },				}
+
+	/// <summary>
+
+	/// Loads application configuration from appsettings.json and sets environment variables.			{ "APPLICATIONINSIGHTS_CONNECTION_STRING", configuration["Azure:AppInsightsConnectionString"] },
+
+	/// </summary>
+
+	private static void SetEnvVariables()			{ "INVOKE_OPEN_AI", configuration["Azure:InvokeOpenAI"] },				Console.WriteLine($"Selected file: {imageFile}");
+
+	{
+
+		// Build configuration			{ "ANALYZE_FRAME_AZURE_FUNCTION_URL", configuration["Azure:AnalyzeFrameAzureFunctionUrl"] },
+
+		var configuration = new ConfigurationBuilder()
+
+			.SetBasePath(AppContext.BaseDirectory)			{ "DEBUG_TO_CONSOLE", configuration["Azure:DebugToConsole"] },				return Task.Run(async () =>
+
+			.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+
+			.Build();				{
+
+
+
+		var envVariables = new Dictionary<string, string>			{ "CONTENT_SAFETY_CONNECTION_STRING1", configuration["Azure:ContentSafety:ContentSafetyConnectionString1"] },					var uploadPath = await videoHelper.UploadFileToBlobAsync(containerName, inputFolder, imageFile, currentFolderName, true, timestamp, customFolderName);
+
+		{
+
+			{ "AZURE_SQL_CONNECTION_STRING", configuration["Azure:SqlConnectionString"] },			{ "CONTENT_SAFETY_CONNECTION_KEY1", configuration["Azure:ContentSafety:ContentSafetyConnectionKey1"] },					Console.WriteLine($"Selected file Upload Path: {uploadPath}");
+
+			{ "STORAGE_ACCOUNT_NAME", configuration["Azure:StorageAccountName"] },
+
+			{ "STORAGE_ACCOUNT_KEY", configuration["Azure:StorageAccountKey"] },				});
+
+			{ "STORAGE_ACCOUNT_URL", configuration["Azure:StorageAccountUrl"] },
+
+			{ "OPEN_AI_DEPLOYMENT_NAME", configuration["Azure:OpenAiDeploymentName"] },			{ "CONTENT_SAFETY_CONNECTION_STRING2", configuration["Azure:ContentSafety:ContentSafetyConnectionString2"] },			}).ToList();
+
+			{ "OPEN_AI_KEY", configuration["Azure:OpenAiKey"] },
+
+			{ "OPEN_AI_ENDPOINT", configuration["Azure:OpenAiEndpoint"] },			{ "CONTENT_SAFETY_CONNECTION_KEY2", configuration["Azure:ContentSafety:ContentSafetyConnectionKey2"] },
+
+			{ "OPEN_AI_MODEL", configuration["Azure:OpenAiModel"] },
+
+			{ "APPLICATIONINSIGHTS_CONNECTION_STRING", configuration["Azure:AppInsightsConnectionString"] },			await Task.WhenAll(uploadTasks);
+
+			{ "INVOKE_OPEN_AI", configuration["Azure:InvokeOpenAI"] },
+
+			{ "ANALYZE_FRAME_AZURE_FUNCTION_URL", configuration["Azure:AnalyzeFrameAzureFunctionUrl"] },			{ "CONTENT_SAFETY_CONNECTION_STRING3", configuration["Azure:ContentSafety:ContentSafetyConnectionString3"] },			done = true;
+
+			{ "DEBUG_TO_CONSOLE", configuration["Azure:DebugToConsole"] },
+
+			{ "CONTENT_SAFETY_CONNECTION_STRING1", configuration["Azure:ContentSafety:ContentSafetyConnectionString1"] },			{ "CONTENT_SAFETY_CONNECTION_KEY3", configuration["Azure:ContentSafety:ContentSafetyConnectionKey3"] },		});
+
+			{ "CONTENT_SAFETY_CONNECTION_KEY1", configuration["Azure:ContentSafety:ContentSafetyConnectionKey1"] },
+
+			{ "CONTENT_SAFETY_CONNECTION_STRING2", configuration["Azure:ContentSafety:ContentSafetyConnectionString2"] },		};
+
+			{ "CONTENT_SAFETY_CONNECTION_KEY2", configuration["Azure:ContentSafety:ContentSafetyConnectionKey2"] },
+
+			{ "CONTENT_SAFETY_CONNECTION_STRING3", configuration["Azure:ContentSafety:ContentSafetyConnectionString3"] },		return done;
+
+			{ "CONTENT_SAFETY_CONNECTION_KEY3", configuration["Azure:ContentSafety:ContentSafetyConnectionKey3"] },
+
+		};		foreach (var envVariable in envVariables)	}
+
+
+
+		foreach (var envVariable in envVariables)		{
+
+		{
+
+			if (string.IsNullOrEmpty(envVariable.Value))			if (string.IsNullOrEmpty(envVariable.Value))	private static async Task UploadVideoAsync(IVideoHelper videoHelper, string containerName, string inputFolder, string selectedFilePath)
+
+			{
+
+				Console.WriteLine($"**********************************************************************");			{	{
+
+				Console.WriteLine($"Warning: Missing configuration value for key '{envVariable.Key}'.");
+
+				Console.WriteLine($"This may cause the application to fail or have degraded functionality.");				Console.WriteLine($"**********************************************************************");		Console.WriteLine($"----------------------------------------------------------------------------\n");
+
+				Console.WriteLine($"**********************************************************************");
+
+			}				Console.WriteLine($"Warning: Missing environment variable value for key '{envVariable.Key}'.");		Console.WriteLine($"Selected file: {selectedFilePath}");
+
+			Environment.SetEnvironmentVariable(envVariable.Key, envVariable.Value);
+
+		}				Console.WriteLine($"This configuration may cause the application to fail.");		var progressBar = new NovelCsam.Helpers.ProgressBar();
+
+	}
+
+}				Console.WriteLine($"**********************************************************************");		var done = "";
+
+
+			}		await progressBar.RunWithProgressBarAsync(async () =>
+
+		{
+
+			Environment.SetEnvironmentVariable(envVariable.Key, envVariable.Value);			done = await videoHelper.UploadFileToBlobAsync(containerName, inputFolder, selectedFilePath);
+
+		}		});
+
+	}		Console.WriteLine($"Selected file uploaded: {done}");
+
+		Console.WriteLine($"----------------------------------------------------------------------------\r\n");
+
+	/// <summary>	}
+
+	/// Main entry point for the application. Initializes services and starts the menu loop.	#endregion
+
+	/// </summary>
+
+	[STAThread]	#region Menu Methods
+
+	public static async Task Main(string[] args)	private static string PrintMenu()
+
+	{	{
+
+		try		string choice;
+
+		{		do
+
+			SetEnvVariables();		{
+
+			Console.WriteLine("\n\n\n\nNovel CSAM Detection Menu");
+
+			Application.SetHighDpiMode(HighDpiMode.SystemAware);			Console.WriteLine("#######################################################");
+
+			Application.EnableVisualStyles();			Console.WriteLine("#####..1.) Upload Video to Azure..................#####");
+
+			Application.SetCompatibleTextRenderingDefault(false);			Console.WriteLine("#####..2.) Upload Images to Azure.................#####");
+
+			Console.WriteLine("#####..3.) Extract Frames.........................#####");
+
+			var serviceCollection = new ServiceCollection();			Console.WriteLine("#####..4.) Run Safety Analysis....................#####");
+
+			ConfigureServices(serviceCollection);			Console.WriteLine("#####..5.) Export Run.............................#####");
+
+			//Console.WriteLine("#####..6.) Run Safety Analysis (Durable Function) #####");
+
+			var serviceProvider = serviceCollection.BuildServiceProvider();			Console.WriteLine("#####..X.) Exit...................................#####");
+
+			var videoHelper = serviceProvider.GetService<IVideoHelper>();			Console.WriteLine("#######################################################");
+
+			var storageHelper = serviceProvider.GetService<IStorageHelper>();
+
+			var sqlHelper = serviceProvider.GetService<IAzureSQLHelper>();			Console.WriteLine("Please enter a valid choice 1 - 4, or X to exit");
+
+			var csvHelper = serviceProvider.GetService<ICsvExporter>();			choice = Console.ReadLine()?.ToLower(System.Globalization.CultureInfo.CurrentCulture) ?? "";
+
+		} while (!new[] { "1", "2", "3", "4", "5", "6", "x" }.Contains(choice));
+
+			if (videoHelper == null || storageHelper == null || sqlHelper == null)
+
+			{		return choice;
+
+				LogHelper.LogException("Failed to initialize required services", 	}
+
+					nameof(Program), nameof(Main), new InvalidOperationException("Services not initialized"));	#endregion
+
+				return;
+
+			}	#region Configuration Methods
+
+	private static void ConfigureServices(IServiceCollection services)
+
+			var menuHandler = new MenuHandler(videoHelper, storageHelper, sqlHelper, csvHelper);	{
+
+			string choice = menuHandler.PrintMenu();		services.AddScoped<IAzureSQLHelper, AzureSQLHelper>();
+
+		services.AddTransient<IContentSafetyHelper, ContentSafetyHelper>();
+
+			while (choice != "x")		services.AddTransient<IStorageHelper, StorageHelper>();
+
+			{		services.AddTransient<ICsvExporter, CsvExporter>();
+
+				await menuHandler.ProcessMenuSelectionAsync(choice);		services.AddTransient<IVideoHelper, VideoHelper>();
+
+				choice = menuHandler.PrintMenu();		services.AddSingleton<HttpClient>();
+
+			}	}
+
+
+
+			Console.WriteLine("Thank you for using Novel CSAM Detection. Goodbye!");	private static void SetEnvVariables()
+
+			LogHelper.LogInformation("Application terminated normally", nameof(Program), nameof(Main));	{
+
+		}		// Build configuration
+
+		catch (Exception ex)		var configuration = new ConfigurationBuilder()
+
+		{			.SetBasePath(AppContext.BaseDirectory)
+
+			LogHelper.LogException($"A critical error occurred: {ex.Message}", 			.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+
+				nameof(Program), nameof(Main), ex);			.Build();
+
+			Console.WriteLine($"A critical error occurred. Please check the logs for details.");
+
+		}		var envVariables = new Dictionary<string, string>
+
+	}		{
+
+}			{ "AZURE_SQL_CONNECTION_STRING", configuration["Azure:SqlConnectionString"] },
+
 			{ "STORAGE_ACCOUNT_NAME", configuration["Azure:StorageAccountName"] },
 			{ "STORAGE_ACCOUNT_KEY", configuration["Azure:StorageAccountKey"] },
 			{ "STORAGE_ACCOUNT_URL", configuration["Azure:StorageAccountUrl"] },

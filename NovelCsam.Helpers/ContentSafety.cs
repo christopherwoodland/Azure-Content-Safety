@@ -1,8 +1,9 @@
-using System.Collections.Generic;
-using System.Linq;
-
 namespace NovelCsam.Helpers
 {
+	/// <summary>
+	/// Helper class for Azure Content Safety API integration.
+	/// Provides image analysis capabilities with load balancing across multiple Content Safety instances.
+	/// </summary>
 	public class ContentSafetyHelper : IContentSafetyHelper
 	{
 		private ContentSafetyClient _csc;
@@ -12,6 +13,10 @@ namespace NovelCsam.Helpers
 		private const int MAX_CONTENT_SAFETY_INSTANCES = 3;
 
 
+		/// <summary>
+		/// Initializes a new instance of the ContentSafetyHelper class.
+		/// Loads Content Safety clients from environment variables for up to 3 instances.
+		/// </summary>
 		public ContentSafetyHelper()
 		{
 			_cscConnections = [];
@@ -44,6 +49,12 @@ namespace NovelCsam.Helpers
 			}
 
 		}
+		
+		/// <summary>
+		/// Gets the next Content Safety client in round-robin fashion for load balancing.
+		/// </summary>
+		/// <returns>A ContentSafetyClient instance.</returns>
+		/// <exception cref="InvalidOperationException">Thrown when no Content Safety clients are configured.</exception>
 		public ContentSafetyClient GetNextContentSafetyClient()
 		{
 			if (_cscConnections.Count == 0)
@@ -61,6 +72,11 @@ namespace NovelCsam.Helpers
 			return keyValuePair.Value;
 		}
 
+		/// <summary>
+		/// Analyzes an image using the Azure Content Safety API with retry policy.
+		/// </summary>
+		/// <param name="inputImage">The binary image data to analyze.</param>
+		/// <returns>An AnalyzeImageResult if successful; otherwise null.</returns>
 		public async Task<AnalyzeImageResult?> AnalyzeImageAsync(BinaryData inputImage)
 		{
 			try
@@ -95,6 +111,11 @@ namespace NovelCsam.Helpers
 			}
 		}
 
+		/// <summary>
+		/// Creates a single Content Safety client from environment variables.
+		/// </summary>
+		/// <returns>A ContentSafetyClient instance.</returns>
+		/// <exception cref="InvalidOperationException">Thrown when connection string or key is not configured.</exception>
 		public static ContentSafetyClient CreateContentSafetyClient()
 		{
 			var cscs = Environment.GetEnvironmentVariable("CONTENT_SAFETY_CONNECTION_STRING") ?? "";

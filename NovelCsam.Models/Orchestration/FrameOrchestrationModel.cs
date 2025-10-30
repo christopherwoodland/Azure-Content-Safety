@@ -1,6 +1,4 @@
-﻿using NovelCsam.Models.Interfaces.Orchestration;
-
-namespace NovelCsam.Models.Orchestration
+﻿namespace NovelCsam.Models.Orchestration
 {
     public class FrameOrchestrationModel : IFrameOrchestrationModel
     {
