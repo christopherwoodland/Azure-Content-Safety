@@ -36,19 +36,19 @@ namespace NovelCsam.UI.Console
 			string choice;
 			do
 			{
-				Console.WriteLine("\n\n\n\nNovel CSAM Detection Menu");
-				Console.WriteLine("#######################################################");
-				Console.WriteLine("#####..1.) Upload Video to Azure..................#####");
-				Console.WriteLine("#####..2.) Upload Images to Azure.................#####");
-				Console.WriteLine("#####..3.) Extract Frames.........................#####");
-				Console.WriteLine("#####..4.) Run Safety Analysis....................#####");
-				Console.WriteLine("#####..5.) Export Run.............................#####");
-				Console.WriteLine("#####..6.) Run Safety Analysis (Durable Function) #####");
-				Console.WriteLine("#####..X.) Exit...................................#####");
-				Console.WriteLine("#######################################################");
+				System.Console.WriteLine("\n\n\n\nNovel CSAM Detection Menu");
+				System.Console.WriteLine("#######################################################");
+				System.Console.WriteLine("#####..1.) Upload Video to Azure..................#####");
+				System.Console.WriteLine("#####..2.) Upload Images to Azure.................#####");
+				System.Console.WriteLine("#####..3.) Extract Frames.........................#####");
+				System.Console.WriteLine("#####..4.) Run Safety Analysis....................#####");
+				System.Console.WriteLine("#####..5.) Export Run.............................#####");
+				System.Console.WriteLine("#####..6.) Run Safety Analysis (Durable Function) #####");
+				System.Console.WriteLine("#####..X.) Exit...................................#####");
+				System.Console.WriteLine("#######################################################");
 
-				Console.WriteLine("Please enter a valid choice 1 - 6, or X to exit");
-				choice = Console.ReadLine()?.ToLower(System.Globalization.CultureInfo.CurrentCulture) ?? "";
+				System.Console.WriteLine("Please enter a valid choice 1 - 6, or X to exit");
+				choice = System.Console.ReadLine()?.ToLower(System.Globalization.CultureInfo.CurrentCulture) ?? "";
 			} while (!new[] { "1", "2", "3", "4", "5", "6", "x" }.Contains(choice));
 
 			return choice;
@@ -87,7 +87,7 @@ namespace NovelCsam.UI.Console
 			{
 				LogHelper.LogException($"An error occurred processing menu selection '{choice}': {ex.Message}", 
 					nameof(MenuHandler), nameof(ProcessMenuSelectionAsync), ex);
-				Console.WriteLine($"An error occurred: {ex.Message}");
+				System.Console.WriteLine($"An error occurred: {ex.Message}");
 			}
 		}
 
@@ -138,43 +138,42 @@ namespace NovelCsam.UI.Console
 
 		private async Task UploadVideoAsync(string selectedFilePath)
 		{
-			Console.WriteLine($"----------------------------------------------------------------------------\n");
-			Console.WriteLine($"Selected file: {selectedFilePath}");
-			var progressBar = new ProgressBar();
+			System.Console.WriteLine($"----------------------------------------------------------------------------\n");
+			System.Console.WriteLine($"Selected file: {selectedFilePath}");
+			var progressBar = new Helpers.ProgressBar();
 			var done = "";
 			await progressBar.RunWithProgressBarAsync(async () =>
 			{
 				done = await _videoHelper.UploadFileToBlobAsync(ContainerVideos, ContainerInput, selectedFilePath);
 			});
-			Console.WriteLine($"Selected file uploaded: {done}");
-			Console.WriteLine($"----------------------------------------------------------------------------\r\n");
+			System.Console.WriteLine($"Selected file uploaded: {done}");
+			System.Console.WriteLine($"----------------------------------------------------------------------------\r\n");
 			LogHelper.LogInformation($"Video uploaded: {done}", nameof(MenuHandler), nameof(UploadVideoAsync));
 		}
 
 		private async Task<bool> UploadImagesAsync(string selectedFolderPath)
 		{
-			Console.WriteLine($"----------------------------------------------------------------------------\n");
-			Console.WriteLine($"Selected folder: {selectedFolderPath}");
+			System.Console.WriteLine($"----------------------------------------------------------------------------\n");
+			System.Console.WriteLine($"Selected folder: {selectedFolderPath}");
 
 			var imageFiles = Directory.GetFiles(selectedFolderPath, "*.*")
 									  .Where(file => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff" }
 									  .Any(ext => file.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
 									  .ToList();
 
-			if (imageFiles.Count == 0)
-			{
-				Console.WriteLine("No image files found in the selected folder.");
-				LogHelper.LogWarning("No image files found in folder", nameof(MenuHandler), nameof(UploadImagesAsync));
-				return false;
-			}
 
-			Console.WriteLine("Enter a custom folder name please...");
-			var customFolderName = Console.ReadLine();
+		if (imageFiles.Count == 0)
+		{
+			System.Console.WriteLine("No image files found in the selected folder.");
+			LogHelper.LogInformation("No image files found in folder", nameof(MenuHandler), nameof(UploadImagesAsync));
+			return false;
+		}			System.Console.WriteLine("Enter a custom folder name please...");
+			var customFolderName = System.Console.ReadLine();
 			int folderIndex = 1;
 			string currentFolderName = GenerateFolderName(folderIndex);
 			string timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
 
-			var progressBar = new ProgressBar();
+			var progressBar = new Helpers.ProgressBar();
 			var done = false;
 			await progressBar.RunWithProgressBarAsync(async () =>
 			{
@@ -186,13 +185,13 @@ namespace NovelCsam.UI.Console
 						currentFolderName = GenerateFolderName(folderIndex);
 					}
 
-					Console.WriteLine($"Selected file: {imageFile}");
+					System.Console.WriteLine($"Selected file: {imageFile}");
 
 					return Task.Run(async () =>
 					{
 						var uploadPath = await _videoHelper.UploadFileToBlobAsync(ContainerVideos, ContainerInput, 
 							imageFile, currentFolderName, true, timestamp, customFolderName);
-						Console.WriteLine($"Selected file Upload Path: {uploadPath}");
+						System.Console.WriteLine($"Selected file Upload Path: {uploadPath}");
 						LogHelper.LogInformation($"Uploaded: {uploadPath}", nameof(MenuHandler), nameof(UploadImagesAsync));
 					});
 				}).ToList();
@@ -213,14 +212,12 @@ namespace NovelCsam.UI.Console
 			var blobList = await _storageHelper.ListBlobsInFolderWithResizeAsync(ContainerVideos, ContainerInput, 3, false) ?? [];
 			if (blobList?.Count == 0)
 			{
-				Console.WriteLine("No files available for frame extraction.");
+				System.Console.WriteLine("No files available for frame extraction.");
 				return;
 			}
 
-			var selectedFile = SelectFromMenuAsync(blobList.Select((item, index) => 
-				new { Key = index + 1, Value = item.Key }).ToList());
-
-			if (!selectedFile.HasValue)
+		var selectedFile = SelectFromMenuAsync<dynamic>(blobList.Select((item, index) => 
+			new { Key = index + 1, Value = item.Key }).Cast<dynamic>().ToList());			if (!selectedFile.HasValue)
 				return;
 
 			var chosenDirValue = blobList.ElementAt(selectedFile.Value - 1).Key;
@@ -230,7 +227,7 @@ namespace NovelCsam.UI.Console
 				var fileName = Path.GetFileName(chosenDirValue);
 				var folderPath = Path.GetDirectoryName(chosenDirValue)?.Replace("\\", "/") ?? "";
 
-				var progressBar = new ProgressBar();
+				var progressBar = new Helpers.ProgressBar();
 				var done = false;
 				await progressBar.RunWithProgressBarAsync(async () =>
 				{
@@ -240,9 +237,9 @@ namespace NovelCsam.UI.Console
 
 				if (done)
 				{
-					Console.WriteLine("************************************************************");
-					Console.WriteLine($"{chosenDirValue} is done extracting!");
-					Console.WriteLine("************************************************************");
+					System.Console.WriteLine("************************************************************");
+					System.Console.WriteLine($"{chosenDirValue} is done extracting!");
+					System.Console.WriteLine("************************************************************");
 					LogHelper.LogInformation($"Frames extracted from: {chosenDirValue}", nameof(MenuHandler), nameof(ExtractFramesAsync));
 				}
 			}
@@ -257,7 +254,7 @@ namespace NovelCsam.UI.Console
 			var dirList = await _storageHelper.ListDirectoriesInFolderAsync(ContainerVideos, ContainerExtracted, 2) ?? [];
 			if (dirList?.Count == 0)
 			{
-				Console.WriteLine("There are no directories containing images for processing.");
+				System.Console.WriteLine("There are no directories containing images for processing.");
 				return;
 			}
 
@@ -271,7 +268,7 @@ namespace NovelCsam.UI.Console
 			{
 				var (getSummary, getChildYesNo) = GetAnalysisOptions();
 
-				var progressBar = new ProgressBar();
+				var progressBar = new Helpers.ProgressBar();
 				var runId = "";
 				await progressBar.RunWithProgressBarAsync(async () =>
 				{
@@ -282,9 +279,9 @@ namespace NovelCsam.UI.Console
 
 				if (!string.IsNullOrEmpty(runId))
 				{
-					Console.WriteLine("********************************************************************************");
-					Console.WriteLine($"{chosenDirValue} is done running! RunId: {runId}");
-					Console.WriteLine("********************************************************************************");
+					System.Console.WriteLine("********************************************************************************");
+					System.Console.WriteLine($"{chosenDirValue} is done running! RunId: {runId}");
+					System.Console.WriteLine("********************************************************************************");
 					LogHelper.LogInformation($"Safety analysis completed. RunId: {runId}", nameof(MenuHandler), nameof(RunSafetyAnalysisAsync));
 				}
 			}
@@ -295,7 +292,7 @@ namespace NovelCsam.UI.Console
 			var dirList = await _storageHelper.ListDirectoriesInFolderAsync(ContainerVideos, ContainerExtracted, 2) ?? [];
 			if (dirList?.Count == 0)
 			{
-				Console.WriteLine("There are no directories containing images for processing.");
+				System.Console.WriteLine("There are no directories containing images for processing.");
 				return;
 			}
 
@@ -309,7 +306,7 @@ namespace NovelCsam.UI.Console
 			{
 				var (getSummary, getChildYesNo) = GetAnalysisOptions();
 
-				var progressBar = new ProgressBar();
+				var progressBar = new Helpers.ProgressBar();
 				var runId = Guid.NewGuid().ToString();
 				await progressBar.RunWithProgressBarAsync(async () =>
 				{
@@ -320,9 +317,9 @@ namespace NovelCsam.UI.Console
 
 				if (!string.IsNullOrEmpty(runId))
 				{
-					Console.WriteLine("********************************************************************************");
-					Console.WriteLine($"{chosenDirValue} is done running! RunId: {runId}");
-					Console.WriteLine("********************************************************************************");
+					System.Console.WriteLine("********************************************************************************");
+					System.Console.WriteLine($"{chosenDirValue} is done running! RunId: {runId}");
+					System.Console.WriteLine("********************************************************************************");
 					LogHelper.LogInformation($"Durable function safety analysis completed. RunId: {runId}", 
 						nameof(MenuHandler), nameof(RunSafetyAnalysisDurableFunctionAsync));
 				}
@@ -338,7 +335,7 @@ namespace NovelCsam.UI.Console
 			var dirList = await _storageHelper.ListDirectoriesInFolderAsync(ContainerVideos, ContainerExtracted, 2) ?? [];
 			if (dirList?.Count == 0)
 			{
-				Console.WriteLine("There are no directories containing images for processing.");
+				System.Console.WriteLine("There are no directories containing images for processing.");
 				return;
 			}
 
@@ -353,19 +350,19 @@ namespace NovelCsam.UI.Console
 				var records = await _sqlHelper.GetFrameResultWithLevelsAsync(chosenDirValue);
 				if (records?.Count == 0)
 				{
-					Console.WriteLine("No records found for export.");
+					System.Console.WriteLine("No records found for export.");
 					return;
 				}
 
-				Console.WriteLine("Enter your export file name..e.g. output.csv");
-				var userInput = Console.ReadLine();
+				System.Console.WriteLine("Enter your export file name..e.g. output.csv");
+				var userInput = System.Console.ReadLine();
 
 				if (records == null || userInput == null)
 				{
 					throw new Exception("Records and/or UserInput is null");
 				}
 
-				var progressBar = new ProgressBar();
+				var progressBar = new Helpers.ProgressBar();
 				var ret = false;
 				await progressBar.RunWithProgressBarAsync(async () =>
 				{
@@ -396,7 +393,7 @@ namespace NovelCsam.UI.Console
 
 				if (folderBrowserDialog.ShowDialog() != DialogResult.OK)
 				{
-					Console.WriteLine("No folder selected.");
+					System.Console.WriteLine("No folder selected.");
 					return;
 				}
 
@@ -423,7 +420,7 @@ namespace NovelCsam.UI.Console
 
 				if (openFileDialog.ShowDialog() != DialogResult.OK)
 				{
-					Console.WriteLine("No file selected.");
+					System.Console.WriteLine("No file selected.");
 					return;
 				}
 				ret = openFileDialog.FileName;
@@ -439,15 +436,15 @@ namespace NovelCsam.UI.Console
 			int chosenDirKey;
 			do
 			{
-				Console.WriteLine($"----------------------------------------------------------------------");
+				System.Console.WriteLine($"----------------------------------------------------------------------");
 				foreach (var dir in dirList)
 				{
-					Console.WriteLine($"({dir.Key}): {dir.Value}");
+					System.Console.WriteLine($"({dir.Key}): {dir.Value}");
 				}
-				Console.WriteLine($"(-1): Return to Menu");
-				Console.WriteLine($"----------------------------------------------------------------------");
-				Console.WriteLine("Choose which directory...e.g. 1");
-				var userInput = Console.ReadLine();
+				System.Console.WriteLine($"(-1): Return to Menu");
+				System.Console.WriteLine($"----------------------------------------------------------------------");
+				System.Console.WriteLine("Choose which directory...e.g. 1");
+				var userInput = System.Console.ReadLine();
 				bool isInteger = int.TryParse(userInput, out int result);
 				chosenDirKey = isInteger ? result : -1;
 			} while (!dirList.ContainsKey(chosenDirKey) && chosenDirKey != -1);
@@ -460,15 +457,15 @@ namespace NovelCsam.UI.Console
 			int chosenKey;
 			do
 			{
-				Console.WriteLine($"----------------------------------------------------------------------");
+				System.Console.WriteLine($"----------------------------------------------------------------------");
 				foreach (var item in menuItems)
 				{
-					Console.WriteLine($"({item.Key}): {item.Value}");
+					System.Console.WriteLine($"({item.Key}): {item.Value}");
 				}
-				Console.WriteLine($"(-1): Return to Menu");
-				Console.WriteLine($"----------------------------------------------------------------------");
-				Console.WriteLine("Choose which file...e.g. 1");
-				var userInput = Console.ReadLine();
+				System.Console.WriteLine($"(-1): Return to Menu");
+				System.Console.WriteLine($"----------------------------------------------------------------------");
+				System.Console.WriteLine("Choose which file...e.g. 1");
+				var userInput = System.Console.ReadLine();
 				bool isInteger = int.TryParse(userInput, out int result);
 				chosenKey = isInteger ? result : -1;
 			} while (!menuItems.Any(m => m.Key == chosenKey) && chosenKey != -1);
@@ -478,12 +475,12 @@ namespace NovelCsam.UI.Console
 
 		private (bool getSummary, bool getChildYesNo) GetAnalysisOptions()
 		{
-			Console.WriteLine($"Create a summary for each frame using GPT? (y or n)");
-			var getSummary = Console.ReadLine();
+			System.Console.WriteLine($"Create a summary for each frame using GPT? (y or n)");
+			var getSummary = System.Console.ReadLine();
 			var getSummaryB = string.IsNullOrEmpty(getSummary) || getSummary.ToLower() == "y";
 
-			Console.WriteLine($"Identify if a child is in the frame using GPT? (y or n)");
-			var getChildYesNo = Console.ReadLine();
+			System.Console.WriteLine($"Identify if a child is in the frame using GPT? (y or n)");
+			var getChildYesNo = System.Console.ReadLine();
 			var getChildYesNoB = string.IsNullOrEmpty(getChildYesNo) || getChildYesNo.ToLower() == "y";
 
 			return (getSummaryB, getChildYesNoB);
@@ -493,28 +490,28 @@ namespace NovelCsam.UI.Console
 		{
 			if (success)
 			{
-				Console.WriteLine("****************************************************");
-				Console.WriteLine(message);
-				Console.WriteLine("****************************************************\n\n");
+				System.Console.WriteLine("****************************************************");
+				System.Console.WriteLine(message);
+				System.Console.WriteLine("****************************************************\n\n");
 			}
 			else
 			{
-				Console.WriteLine("There was an issue while processing your request.");
+				System.Console.WriteLine("There was an issue while processing your request.");
 			}
 		}
 
 		private void PrintExportResult(bool success, string directoryValue)
 		{
-			Console.WriteLine("****************************************************");
+			System.Console.WriteLine("****************************************************");
 			if (success)
 			{
-				Console.WriteLine($"{directoryValue} is done exporting!");
+				System.Console.WriteLine($"{directoryValue} is done exporting!");
 			}
 			else
 			{
-				Console.WriteLine($"An error occurred when exporting from {directoryValue}!");
+				System.Console.WriteLine($"An error occurred when exporting from {directoryValue}!");
 			}
-			Console.WriteLine("****************************************************");
+			System.Console.WriteLine("****************************************************");
 		}
 
 		#endregion

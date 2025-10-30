@@ -1,7 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
-using NovelCsam.Functions.Configuration;
-
 namespace NovelCsam.Tests
 {
 	/// <summary>

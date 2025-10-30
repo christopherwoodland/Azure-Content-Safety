@@ -1,9 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
-using NovelCsam.Helpers;
-using NovelCsam.Helpers.Interfaces;
-using NovelCsam.Models;
-
 namespace NovelCsam.Tests
 {
 	/// <summary>

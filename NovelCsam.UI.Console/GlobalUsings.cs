@@ -1,4 +1,5 @@
-﻿global using System.Windows.Forms;
+﻿global using System;
+global using System.Windows.Forms;
 global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using NovelCsam.Helpers;

@@ -33,6 +33,6 @@
     </None>
   </ItemGroup>
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="xcopy /Y /E &quot;$(ProjectDir)ffmpeg-full\tools\ffmpeg\bin\*.*&quot; &quot;$(TargetDir)&quot;" />
+    <Exec Command="if exist &quot;$(ProjectDir)ffmpeg-full\tools\ffmpeg\bin\*.*&quot; (xcopy /Y /E &quot;$(ProjectDir)ffmpeg-full\tools\ffmpeg\bin\*.*&quot; &quot;$(TargetDir)&quot;)" ContinueOnError="true" />
   </Target>
 </Project>
