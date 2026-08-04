@@ -2,7 +2,7 @@
 {
     public interface IAnalyzeFrameOrchestrationModel
     {
-        CustomBinaryData Frame { get; set; }
+        string BlobPath { get; set; }
         string? RunId { get; set; }
         DateTime RunDateTime { get; set; }
 

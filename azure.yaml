@@ -1,0 +1,11 @@
+name: azure-content-safety
+metadata:
+  template: azure-functions-dotnet-managed-identity
+infra:
+  provider: bicep
+  path: ./infra
+services:
+  functions:
+    project: ./NovelCsam.Functions
+    language: dotnet
+    host: function

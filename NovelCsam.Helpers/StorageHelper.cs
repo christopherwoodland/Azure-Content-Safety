@@ -3,22 +3,52 @@
 	public class StorageHelper : IStorageHelper
 	{
 		private readonly DataLakeServiceClient _serviceClient;
-		private readonly ILogHelper _logHelper;
 
 		public StorageHelper()
 		{
-			var san = Environment.GetEnvironmentVariable("STORAGE_ACCOUNT_NAME") ?? "";
-			var sak = Environment.GetEnvironmentVariable("STORAGE_ACCOUNT_KEY") ?? "";
-			var saurl = Environment.GetEnvironmentVariable("STORAGE_ACCOUNT_URL") ?? "";
+			var connectionString = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING") ?? string.Empty;
+			var accountName = Environment.GetEnvironmentVariable("STORAGE_ACCOUNT_NAME") ?? string.Empty;
+			var accountKey = Environment.GetEnvironmentVariable("STORAGE_ACCOUNT_KEY") ?? string.Empty;
+			var storageUrl = Environment.GetEnvironmentVariable("STORAGE_ACCOUNT_URL") ?? string.Empty;
+			var useManagedIdentity = string.Equals(
+				Environment.GetEnvironmentVariable("STORAGE_USE_MANAGED_IDENTITY"),
+				"true",
+				StringComparison.OrdinalIgnoreCase);
 
-			string serviceUri = saurl;
-			_serviceClient = new DataLakeServiceClient(new Uri(serviceUri),
-				new StorageSharedKeyCredential(san, sak));
+			if (!string.IsNullOrWhiteSpace(connectionString))
+			{
+				_serviceClient = new DataLakeServiceClient(connectionString);
+				return;
+			}
+
+			if (string.IsNullOrWhiteSpace(storageUrl))
+			{
+				if (string.IsNullOrWhiteSpace(accountName))
+				{
+					throw new InvalidOperationException("Storage configuration is missing. Set AZURE_STORAGE_CONNECTION_STRING or STORAGE_ACCOUNT_URL.");
+				}
+
+				storageUrl = $"https://{accountName}.dfs.core.windows.net";
+			}
+
+			if (useManagedIdentity || string.IsNullOrWhiteSpace(accountKey))
+			{
+				_serviceClient = new DataLakeServiceClient(new Uri(storageUrl), new DefaultAzureCredential());
+				return;
+			}
+
+			if (string.IsNullOrWhiteSpace(accountName))
+			{
+				throw new InvalidOperationException("STORAGE_ACCOUNT_NAME is required when using account key authentication.");
+			}
+
+			_serviceClient = new DataLakeServiceClient(new Uri(storageUrl),
+				new StorageSharedKeyCredential(accountName, accountKey));
 		}
 
 		public StorageHelper(string storageAccountName, string storageAccountKey, ILogHelper logHelper)
 		{
-			_logHelper = logHelper;
+			_ = logHelper;
 			string serviceUri = $"https://{storageAccountName}.dfs.core.windows.net";
 			_serviceClient = new DataLakeServiceClient(new Uri(serviceUri), new StorageSharedKeyCredential(storageAccountName, storageAccountKey));
 		}
@@ -36,22 +66,28 @@
 			{
 				return null;
 			}
-			if (memoryStream.Length >= maxSize)
+			memoryStream.Position = 0;
+			using var image = await Image.LoadAsync(memoryStream);
+			if (memoryStream.Length <= maxSize)
 			{
-				using var originalImage = Image.FromStream(memoryStream);
-				var resizedImage = ResizeImage(originalImage, maxSize);
-				using var resizedStream = new MemoryStream();
-				resizedImage.Save(resizedStream, ImageFormat.Jpeg);
-				return new BinaryData(resizedStream.ToArray());
+				using var passthroughStream = new MemoryStream();
+				await image.SaveAsync(passthroughStream, image.Metadata.DecodedImageFormat ?? JpegFormat.Instance);
+				return new BinaryData(passthroughStream.ToArray());
 			}
-			else
+
+			image.Mutate(operation => operation.AutoOrient());
+			image.Mutate(operation => operation.Resize(new ResizeOptions
 			{
-				using var originalImage = Image.FromStream(memoryStream);
-				var resizedImage = ResizeImageIfNeeded(originalImage, 50, 50, 2048, 2048);
-				using var resizedStream = new MemoryStream();
-				resizedImage.Save(resizedStream, ImageFormat.Jpeg);
-				return new BinaryData(resizedStream.ToArray());
-			}
+				Mode = ResizeMode.Max,
+				Size = new Size(2048, 2048)
+			}));
+
+			using var resizedStream = new MemoryStream();
+			await image.SaveAsJpegAsync(resizedStream, new JpegEncoder
+			{
+				Quality = 85
+			});
+			return new BinaryData(resizedStream.ToArray());
 		}
 
 
@@ -70,68 +106,73 @@
 			return new BinaryData(memoryStream.ToArray());
 		}
 
-		private Image ResizeImageIfNeeded(Image originalImage, int minWidth, int minHeight, int maxWidth, int maxHeight)
+		public async Task<BinaryData?> GetBlobAsBinaryDataAsync(string containerName, string blobPath, bool resize = true, int maxSizeBytes = 4194304)
 		{
-			int width = originalImage.Width;
-			int height = originalImage.Height;
-
-			if (width < minWidth || height < minHeight || width > maxWidth || height > maxHeight)
+			if (string.IsNullOrWhiteSpace(blobPath))
 			{
-				int newWidth = width < minWidth ? minWidth : (width > maxWidth ? maxWidth : width);
-				int newHeight = height < minHeight ? minHeight : (height > maxHeight ? maxHeight : height);
-
-				return ResizeImage(originalImage, newWidth, newHeight);
+				return null;
 			}
 
-			// Create a new Bitmap with the same dimensions as the original image
-			var newImage = new Bitmap(originalImage.Width, originalImage.Height);
-			using (var graphics = Graphics.FromImage(newImage))
+			var normalizedPath = blobPath.Replace('\\', '/');
+			var folderPath = Path.GetDirectoryName(normalizedPath)?.Replace('\\', '/') ?? string.Empty;
+			var fileName = Path.GetFileName(normalizedPath);
+
+			if (string.IsNullOrWhiteSpace(fileName))
 			{
-				graphics.DrawImage(originalImage, 0, 0, originalImage.Width, originalImage.Height);
+				return null;
 			}
 
-			return newImage;
+			return resize
+				? await GetFileAsBinaryDataWithResizeAsync(fileName, containerName, folderPath, maxSizeBytes)
+				: await GetFileAsBinaryDataAsync(fileName, containerName, folderPath);
 		}
 
-		private Image ResizeImage(Image image, int width, int height)
+		public async Task<string> UploadTextAsync(string containerName, string folderPath, string fileName, string content)
 		{
-			var destRect = new Rectangle(0, 0, width, height);
-			var destImage = new Bitmap(width, height);
-
-			destImage.SetResolution(image.HorizontalResolution, image.VerticalResolution);
-
-			using (var graphics = Graphics.FromImage(destImage))
+			try
 			{
-				graphics.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
-				graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
-				graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-				graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-				graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+				var fileClient = GetFileClient(containerName, folderPath, fileName);
+				using var contentStream = new MemoryStream(Encoding.UTF8.GetBytes(content));
+				await fileClient.UploadAsync(contentStream, overwrite: true);
+				return $"{folderPath}/{fileName}";
+			}
+			catch (Exception ex)
+			{
+				LogHelper.LogException($"An error occurred while uploading text content: {ex.Message}", nameof(StorageHelper), nameof(UploadTextAsync), ex);
+				throw;
+			}
+		}
 
-				using (var wrapMode = new ImageAttributes())
+		public async Task<string?> DownloadTextAsync(string containerName, string blobPath)
+		{
+			try
+			{
+				if (string.IsNullOrWhiteSpace(blobPath))
 				{
-					wrapMode.SetWrapMode(System.Drawing.Drawing2D.WrapMode.TileFlipXY);
-					graphics.DrawImage(image, destRect, 0, 0, image.Width, image.Height, GraphicsUnit.Pixel, wrapMode);
+					return null;
 				}
+
+				var normalizedPath = blobPath.Replace('\\', '/');
+				var folderPath = Path.GetDirectoryName(normalizedPath)?.Replace('\\', '/') ?? string.Empty;
+				var fileName = Path.GetFileName(normalizedPath);
+
+				if (string.IsNullOrWhiteSpace(fileName))
+				{
+					return null;
+				}
+
+				var fileClient = GetFileClient(containerName, folderPath, fileName);
+				var response = await fileClient.ReadAsync();
+
+				using var memoryStream = new MemoryStream();
+				await response.Value.Content.CopyToAsync(memoryStream);
+				return Encoding.UTF8.GetString(memoryStream.ToArray());
 			}
-
-			return destImage;
-		}
-		private Image ResizeImage(Image image, int maxSize)
-		{
-			int newWidth = image.Width > image.Height ? maxSize : (int)(image.Width * (maxSize / (double)image.Height));
-			int newHeight = image.Width > image.Height ? (int)(image.Height * (maxSize / (double)image.Width)) : maxSize;
-
-			var resizedImage = new Bitmap(newWidth, newHeight);
-			using (var graphics = Graphics.FromImage(resizedImage))
+			catch (Exception ex)
 			{
-				graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
-				graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-				graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-				graphics.DrawImage(image, 0, 0, newWidth, newHeight);
+				LogHelper.LogException($"An error occurred while downloading text content: {ex.Message}", nameof(StorageHelper), nameof(DownloadTextAsync), ex);
+				throw;
 			}
-
-			return resizedImage;
 		}
 
 		private async Task ListDirectoriesRecursive(DataLakeFileSystemClient fileSystemClient, string folderPath, Dictionary<int, string> directories, int currentDepth, int maxDepth, IndexHolder indexHolder)
@@ -218,6 +259,40 @@
 			}
 
 			return ret;
+		}
+
+		public async Task<IReadOnlyList<string>> ListBlobPathsAsync(string containerName, string folderPath, int maxDepth = 10)
+		{
+			var results = new List<string>();
+			try
+			{
+				var fileSystemClient = _serviceClient.GetFileSystemClient(containerName);
+				var normalizedFolder = (folderPath ?? string.Empty).Replace('\\', '/').Trim('/');
+				var baseDepth = string.IsNullOrEmpty(normalizedFolder)
+					? 0
+					: normalizedFolder.Split('/', StringSplitOptions.RemoveEmptyEntries).Length;
+
+				await foreach (var pathItem in fileSystemClient.GetPathsAsync(path: normalizedFolder, recursive: true, userPrincipalName: false, cancellationToken: default))
+				{
+					if (pathItem.IsDirectory == true)
+					{
+						continue;
+					}
+
+					var currentDepth = pathItem.Name.Split('/', StringSplitOptions.RemoveEmptyEntries).Length - baseDepth;
+					if (currentDepth <= maxDepth)
+					{
+						results.Add(pathItem.Name);
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				LogHelper.LogException($"An error occurred listing blob paths: {ex.Message}", nameof(StorageHelper), nameof(ListBlobPathsAsync), ex);
+				throw;
+			}
+
+			return results;
 		}
 
 		public async Task<string> UploadFileAsync(string containerName, string folderPath, string fullFilePath)

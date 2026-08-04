@@ -1,0 +1,429 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.45.15.27210",
+      "templateHash": "11569211786683903744"
+    }
+  },
+  "parameters": {
+    "environmentName": {
+      "type": "string",
+      "defaultValue": "dev",
+      "metadata": {
+        "description": "Deployment environment name used as a naming suffix."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region for all resources."
+      }
+    },
+    "functionAppName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional override for the Function App name. Leave empty to auto-generate."
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional override for the Storage Account name. Leave empty to auto-generate."
+      }
+    },
+    "sqlServer": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional Azure SQL logical server name for managed identity SQL auth fallback."
+      }
+    },
+    "sqlDatabase": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional Azure SQL database name for managed identity SQL auth fallback."
+      }
+    },
+    "keyVaultName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional Key Vault name in the same resource group. Required for Key Vault references and secret role assignment."
+      }
+    },
+    "sqlConnectionSecretUri": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional Key Vault secret URI for AZURE_SQL_CONNECTION_STRING app setting."
+      }
+    },
+    "contentSafetyEndpoint1": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Primary Content Safety endpoint URI. Example: https://my-content-safety.cognitiveservices.azure.com"
+      }
+    },
+    "contentSafetyConnectionKey1SecretUri": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional Key Vault secret URI for CONTENT_SAFETY_CONNECTION_KEY1 app setting."
+      }
+    },
+    "contentSafetyEndpoint2": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Secondary Content Safety endpoint URI."
+      }
+    },
+    "contentSafetyConnectionKey2SecretUri": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional Key Vault secret URI for CONTENT_SAFETY_CONNECTION_KEY2 app setting."
+      }
+    },
+    "contentSafetyEndpoint3": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Tertiary Content Safety endpoint URI."
+      }
+    },
+    "contentSafetyConnectionKey3SecretUri": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional Key Vault secret URI for CONTENT_SAFETY_CONNECTION_KEY3 app setting."
+      }
+    },
+    "invokeOpenAi": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Enable OpenAI augmentation for summaries."
+      }
+    },
+    "openAiEndpoint": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional Azure OpenAI endpoint URI."
+      }
+    },
+    "openAiDeploymentName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional Azure OpenAI deployment name."
+      }
+    },
+    "openAiUseManagedIdentity": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Use managed identity for Azure OpenAI/Azure AI Foundry calls."
+      }
+    },
+    "openAiModel": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional Azure OpenAI model name."
+      }
+    },
+    "openAiTimeoutSeconds": {
+      "type": "int",
+      "defaultValue": 240,
+      "metadata": {
+        "description": "Timeout in seconds for Azure OpenAI requests."
+      }
+    }
+  },
+  "variables": {
+    "normalizedEnv": "[toLower(replace(parameters('environmentName'), '-', ''))]",
+    "unique": "[toLower(take(uniqueString(resourceGroup().id, parameters('environmentName')), 6))]",
+    "storageName": "[if(empty(parameters('storageAccountName')), take(format('st{0}{1}', variables('normalizedEnv'), variables('unique')), 24), toLower(parameters('storageAccountName')))]",
+    "appName": "[if(empty(parameters('functionAppName')), take(format('func-{0}-{1}', variables('normalizedEnv'), variables('unique')), 60), parameters('functionAppName'))]",
+    "sqlConnectionSettingValue": "[if(empty(parameters('sqlConnectionSecretUri')), '', format('@Microsoft.KeyVault(SecretUri={0})', parameters('sqlConnectionSecretUri')))]",
+    "contentSafetyKey1SettingValue": "[if(empty(parameters('contentSafetyConnectionKey1SecretUri')), '', format('@Microsoft.KeyVault(SecretUri={0})', parameters('contentSafetyConnectionKey1SecretUri')))]",
+    "contentSafetyKey2SettingValue": "[if(empty(parameters('contentSafetyConnectionKey2SecretUri')), '', format('@Microsoft.KeyVault(SecretUri={0})', parameters('contentSafetyConnectionKey2SecretUri')))]",
+    "contentSafetyKey3SettingValue": "[if(empty(parameters('contentSafetyConnectionKey3SecretUri')), '', format('@Microsoft.KeyVault(SecretUri={0})', parameters('contentSafetyConnectionKey3SecretUri')))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-05-01",
+      "name": "[variables('storageName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "minimumTlsVersion": "TLS1_2",
+        "supportsHttpsTrafficOnly": true,
+        "allowBlobPublicAccess": false,
+        "isHnsEnabled": true
+      }
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[format('{0}-ai', variables('appName'))]",
+      "location": "[parameters('location')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web",
+        "WorkspaceResourceId": null
+      }
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2023-12-01",
+      "name": "[format('{0}-plan', variables('appName'))]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "FC1",
+        "tier": "FlexConsumption"
+      },
+      "kind": "functionapp",
+      "properties": {
+        "reserved": true
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}/default/deployments', variables('storageName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2023-12-01",
+      "name": "[variables('appName')]",
+      "location": "[parameters('location')]",
+      "kind": "functionapp,linux",
+      "tags": {
+        "azd-service-name": "functions"
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', format('{0}-plan', variables('appName')))]",
+        "httpsOnly": true,
+        "functionAppConfig": {
+          "deployment": {
+            "storage": {
+              "type": "blobContainer",
+              "value": "[format('{0}deployments', reference(resourceId('Microsoft.Storage/storageAccounts', variables('storageName')), '2023-05-01').primaryEndpoints.blob)]",
+              "authentication": {
+                "type": "SystemAssignedIdentity"
+              }
+            }
+          },
+          "runtime": {
+            "name": "dotnet-isolated",
+            "version": "10.0"
+          },
+          "scaleAndConcurrency": {
+            "maximumInstanceCount": 100,
+            "instanceMemoryMB": 2048
+          }
+        },
+        "siteConfig": {
+          "minTlsVersion": "1.2",
+          "ftpsState": "Disabled",
+          "use32BitWorkerProcess": false,
+          "appSettings": [
+            {
+              "name": "AzureWebJobsStorage__accountName",
+              "value": "[variables('storageName')]"
+            },
+            {
+              "name": "FUNCTIONS_EXTENSION_VERSION",
+              "value": "~4"
+            },
+            {
+              "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+              "value": "[reference(resourceId('Microsoft.Insights/components', format('{0}-ai', variables('appName'))), '2020-02-02').ConnectionString]"
+            },
+            {
+              "name": "APPLICATIONINSIGHTS_AUTHENTICATION_STRING",
+              "value": "Authorization=AAD"
+            },
+            {
+              "name": "STORAGE_USE_MANAGED_IDENTITY",
+              "value": "true"
+            },
+            {
+              "name": "STORAGE_ACCOUNT_NAME",
+              "value": "[variables('storageName')]"
+            },
+            {
+              "name": "STORAGE_ACCOUNT_URL",
+              "value": "[format('https://{0}.dfs.{1}', variables('storageName'), environment().suffixes.storage)]"
+            },
+            {
+              "name": "AZURE_SQL_CONNECTION_STRING",
+              "value": "[variables('sqlConnectionSettingValue')]"
+            },
+            {
+              "name": "SQL_SERVER",
+              "value": "[parameters('sqlServer')]"
+            },
+            {
+              "name": "SQL_DATABASE",
+              "value": "[parameters('sqlDatabase')]"
+            },
+            {
+              "name": "CONTENT_SAFETY_USE_MANAGED_IDENTITY",
+              "value": "true"
+            },
+            {
+              "name": "CONTENT_SAFETY_ENDPOINT1",
+              "value": "[parameters('contentSafetyEndpoint1')]"
+            },
+            {
+              "name": "CONTENT_SAFETY_CONNECTION_KEY1",
+              "value": "[variables('contentSafetyKey1SettingValue')]"
+            },
+            {
+              "name": "CONTENT_SAFETY_ENDPOINT2",
+              "value": "[parameters('contentSafetyEndpoint2')]"
+            },
+            {
+              "name": "CONTENT_SAFETY_CONNECTION_KEY2",
+              "value": "[variables('contentSafetyKey2SettingValue')]"
+            },
+            {
+              "name": "CONTENT_SAFETY_ENDPOINT3",
+              "value": "[parameters('contentSafetyEndpoint3')]"
+            },
+            {
+              "name": "CONTENT_SAFETY_CONNECTION_KEY3",
+              "value": "[variables('contentSafetyKey3SettingValue')]"
+            },
+            {
+              "name": "INVOKE_OPEN_AI",
+              "value": "[if(parameters('invokeOpenAi'), 'true', 'false')]"
+            },
+            {
+              "name": "OPEN_AI_ENDPOINT",
+              "value": "[parameters('openAiEndpoint')]"
+            },
+            {
+              "name": "OPEN_AI_DEPLOYMENT_NAME",
+              "value": "[parameters('openAiDeploymentName')]"
+            },
+            {
+              "name": "OPEN_AI_MODEL",
+              "value": "[parameters('openAiModel')]"
+            },
+            {
+              "name": "OPEN_AI_USE_MANAGED_IDENTITY",
+              "value": "[if(parameters('openAiUseManagedIdentity'), 'true', 'false')]"
+            },
+            {
+              "name": "OPEN_AI_TIMEOUT_SECONDS",
+              "value": "[string(parameters('openAiTimeoutSeconds'))]"
+            },
+            {
+              "name": "RETRY_MAX_ATTEMPTS",
+              "value": "3"
+            },
+            {
+              "name": "RETRY_BACKOFF_MULTIPLIER",
+              "value": "2.0"
+            },
+            {
+              "name": "DURABLE_BATCH_SIZE",
+              "value": "25"
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', format('{0}-ai', variables('appName')))]",
+        "[resourceId('Microsoft.Web/serverfarms', format('{0}-plan', variables('appName')))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]",
+      "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('storageName')), resourceId('Microsoft.Web/sites', variables('appName')), 'storage-blob-data-contributor')]",
+      "properties": {
+        "principalId": "[reference(resourceId('Microsoft.Web/sites', variables('appName')), '2023-12-01', 'full').identity.principalId]",
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('appName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]",
+      "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('storageName')), resourceId('Microsoft.Web/sites', variables('appName')), 'storage-blob-data-owner')]",
+      "properties": {
+        "principalId": "[reference(resourceId('Microsoft.Web/sites', variables('appName')), '2023-12-01', 'full').identity.principalId]",
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b')]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('appName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]"
+      ]
+    },
+    {
+      "condition": "[not(empty(parameters('keyVaultName')))]",
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), resourceId('Microsoft.Web/sites', variables('appName')), 'key-vault-secrets-user')]",
+      "properties": {
+        "principalId": "[reference(resourceId('Microsoft.Web/sites', variables('appName')), '2023-12-01', 'full').identity.principalId]",
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('appName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "functionAppName": {
+      "type": "string",
+      "value": "[variables('appName')]"
+    },
+    "functionAppPrincipalId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Web/sites', variables('appName')), '2023-12-01', 'full').identity.principalId]"
+    },
+    "storageAccountName": {
+      "type": "string",
+      "value": "[variables('storageName')]"
+    },
+    "applicationInsightsConnectionString": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Insights/components', format('{0}-ai', variables('appName'))), '2020-02-02').ConnectionString]"
+    }
+  }
+}

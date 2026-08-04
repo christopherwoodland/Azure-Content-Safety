@@ -10,7 +10,7 @@ namespace NovelCsam.Helpers
 		#region Constructor
 		public AzureSQLHelper()
 		{
-			_connectionString = Environment.GetEnvironmentVariable("AZURE_SQL_CONNECTION_STRING") ?? "";
+			_connectionString = BuildConnectionString();
 
 			_retryPolicy = Policy
 				.Handle<SqlException>(ex => ex.Number == -2) // SQL Server timeout error number
@@ -26,6 +26,40 @@ namespace NovelCsam.Helpers
 					});
 		}
 		#endregion
+
+		private static string BuildConnectionString()
+		{
+			var configuredConnectionString = Environment.GetEnvironmentVariable("AZURE_SQL_CONNECTION_STRING") ?? string.Empty;
+			if (!string.IsNullOrWhiteSpace(configuredConnectionString))
+			{
+				return configuredConnectionString;
+			}
+
+			var sqlServer = Environment.GetEnvironmentVariable("SQL_SERVER") ?? string.Empty;
+			var sqlDatabase = Environment.GetEnvironmentVariable("SQL_DATABASE") ?? string.Empty;
+			if (string.IsNullOrWhiteSpace(sqlServer) || string.IsNullOrWhiteSpace(sqlDatabase))
+			{
+				return string.Empty;
+			}
+
+			var builder = new SqlConnectionStringBuilder
+			{
+				DataSource = sqlServer,
+				InitialCatalog = sqlDatabase,
+				Encrypt = true,
+				TrustServerCertificate = false,
+				ConnectTimeout = 30,
+				Authentication = SqlAuthenticationMethod.ActiveDirectoryManagedIdentity
+			};
+
+			var managedIdentityClientId = Environment.GetEnvironmentVariable("SQL_MANAGED_IDENTITY_CLIENT_ID") ?? string.Empty;
+			if (!string.IsNullOrWhiteSpace(managedIdentityClientId))
+			{
+				builder.UserID = managedIdentityClientId;
+			}
+
+			return builder.ConnectionString;
+		}
 
 		#region Public Methods
 		public async Task<IFrameResult?> CreateFrameResult(IFrameResult item)
@@ -165,7 +199,7 @@ namespace NovelCsam.Helpers
 							{
 								var result = new FrameDetailResult
 								{
-									Id = reader["Id"].ToString(),
+									Id = reader["Id"].ToString() ?? string.Empty,
 									RunId = reader["RunId"].ToString(),
 									Summary = reader["Summary"].ToString(),
 									ChildYesNo = reader["ChildYesNo"].ToString(),
@@ -194,9 +228,9 @@ namespace NovelCsam.Helpers
 
 		private async Task<IFrameResult?> ExecuteNonQueryAsync(string query, IFrameResult item)
 		{
-			return await _retryPolicy.ExecuteAsync(async () =>
+			try
 			{
-				try
+				return await _retryPolicy.ExecuteAsync(async () =>
 				{
 					using (SqlConnection connection = new(_connectionString))
 					{
@@ -225,14 +259,15 @@ namespace NovelCsam.Helpers
 
 						await command.ExecuteNonQueryAsync();
 					}
+
 					return item;
-				}
-				catch (Exception ex)
-				{
-					LogHelper.LogException(ex.Message, nameof(AzureSQLHelper), nameof(ExecuteNonQueryAsync), ex);
-					return null;
-				}
-			});
+				});
+			}
+			catch (Exception ex)
+			{
+				LogHelper.LogException(ex.Message, nameof(AzureSQLHelper), nameof(ExecuteNonQueryAsync), ex);
+				return null;
+			}
 		}
 		#endregion
 	}

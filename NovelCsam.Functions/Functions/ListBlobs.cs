@@ -9,22 +9,17 @@ namespace NovelCsam.Functions.Functions
 		}
 
 		[Function("ListBlobs")]
-		public async Task<Dictionary<string, CustomBinaryData>>? RunListBlobsAsync([ActivityTrigger] ListBlobModel item, FunctionContext executionContext)
+		public async Task<List<string>> RunListBlobsAsync([ActivityTrigger] ListBlobModel item, FunctionContext executionContext)
 		{
 			try
 			{
-				var ret = new Dictionary<string, CustomBinaryData>();
-				var list = await _sth.ListBlobsInFolderWithResizeAsync(item.ContainerName, item.ContainerDirectory, 3);
-				foreach (var i in list)
-				{
-					ret.Add(i.Key, new CustomBinaryData(i.Value.ToArray(),i.Key));
-				}
-				return ret;
+				var list = await _sth.ListBlobPathsAsync(item.ContainerName, item.ContainerDirectory, 3);
+				return new List<string>(list);
 			}
 			catch (Exception ex)
 			{
 				LogHelper.LogException($"An error occurred when listing blobs: {ex.Message}", nameof(ListBlobs), nameof(RunListBlobsAsync), ex);
-				return null;
+				throw;
 			}
 		}
 	}

@@ -5,7 +5,7 @@ namespace NovelCsam.Helpers
 {
 	public class ContentSafetyHelper : IContentSafetyHelper
 	{
-		private ContentSafetyClient _csc;
+		private ContentSafetyClient? _csc;
 		private readonly Dictionary<string, ContentSafetyClient> _cscConnections;
 		private static int _lastUsedIndex = -1;
 		private readonly AsyncRetryPolicy _retryPolicy;
@@ -15,18 +15,33 @@ namespace NovelCsam.Helpers
 		public ContentSafetyHelper()
 		{
 			_cscConnections = [];
+			var useManagedIdentity = string.Equals(Environment.GetEnvironmentVariable("CONTENT_SAFETY_USE_MANAGED_IDENTITY"), "true", StringComparison.OrdinalIgnoreCase);
+
 			for (int i = 1; i <= MAX_CONTENT_SAFETY_INSTANCES; i++)
 			{
-				var cscs = Environment.GetEnvironmentVariable($"CONTENT_SAFETY_CONNECTION_STRING{i}") ?? "";
-				var csck = Environment.GetEnvironmentVariable($"CONTENT_SAFETY_CONNECTION_KEY{i}") ?? "";
+				var endpoint = Environment.GetEnvironmentVariable($"CONTENT_SAFETY_ENDPOINT{i}")
+					?? Environment.GetEnvironmentVariable($"CONTENT_SAFETY_CONNECTION_STRING{i}")
+					?? string.Empty;
+				var apiKey = Environment.GetEnvironmentVariable($"CONTENT_SAFETY_CONNECTION_KEY{i}") ?? string.Empty;
 
-				if (!string.IsNullOrEmpty(cscs) && !string.IsNullOrEmpty(csck))
+				if (!string.IsNullOrWhiteSpace(endpoint))
 				{
 					try
 					{
-						if (!_cscConnections.ContainsKey(csck))
+						var cacheKey = $"{endpoint}|{i}";
+						if (!_cscConnections.ContainsKey(cacheKey))
 						{
-							_cscConnections.Add(csck, new ContentSafetyClient(new Uri(cscs), new AzureKeyCredential(csck)));
+							ContentSafetyClient client;
+							if (useManagedIdentity || string.IsNullOrWhiteSpace(apiKey))
+							{
+								client = new ContentSafetyClient(new Uri(endpoint), new DefaultAzureCredential());
+							}
+							else
+							{
+								client = new ContentSafetyClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
+							}
+
+							_cscConnections.Add(cacheKey, client);
 						}
 					}
 					catch (Exception ex)
@@ -37,11 +52,9 @@ namespace NovelCsam.Helpers
 					}
 				}
 			}
-			if (_cscConnections.Count > 0)
-			{
-				_retryPolicy = Policy.Handle<Exception>()
-								.WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
-			}
+
+			_retryPolicy = Policy.Handle<Exception>()
+				.WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
 
 		}
 		public ContentSafetyClient GetNextContentSafetyClient()
@@ -65,12 +78,6 @@ namespace NovelCsam.Helpers
 		{
 			try
 			{
-				if (_retryPolicy == null)
-				{
-					var ex = new NullReferenceException("AnalyzeImageAsync _retryPolicy is null");
-					LogHelper.LogException(ex.Message, nameof(ContentSafetyHelper), nameof(AnalyzeImageAsync), ex);
-					return null;
-				}
 				return await _retryPolicy.ExecuteAsync(async () =>
 				{
 					_csc = GetNextContentSafetyClient();
@@ -97,18 +104,26 @@ namespace NovelCsam.Helpers
 
 		public static ContentSafetyClient CreateContentSafetyClient()
 		{
-			var cscs = Environment.GetEnvironmentVariable("CONTENT_SAFETY_CONNECTION_STRING") ?? "";
-			var csck = Environment.GetEnvironmentVariable("CONTENT_SAFETY_CONNECTION_KEY") ?? "";
+			var endpoint = Environment.GetEnvironmentVariable("CONTENT_SAFETY_ENDPOINT")
+				?? Environment.GetEnvironmentVariable("CONTENT_SAFETY_CONNECTION_STRING")
+				?? string.Empty;
+			var apiKey = Environment.GetEnvironmentVariable("CONTENT_SAFETY_CONNECTION_KEY") ?? string.Empty;
+			var useManagedIdentity = string.Equals(Environment.GetEnvironmentVariable("CONTENT_SAFETY_USE_MANAGED_IDENTITY"), "true", StringComparison.OrdinalIgnoreCase);
 
-			if (string.IsNullOrEmpty(cscs) || string.IsNullOrEmpty(csck))
+			if (string.IsNullOrWhiteSpace(endpoint))
 			{
-				var message = "Content Safety connection string or key is not set in environment variables.";
-				var ex = new InvalidOperationException("Content Safety connection string or key is not set.");
+				var message = "Content Safety endpoint is not set in environment variables.";
+				var ex = new InvalidOperationException("Content Safety endpoint is not set.");
 				LogHelper.LogException(message, nameof(ContentSafetyHelper), nameof(CreateContentSafetyClient), ex);
 				throw ex;
 			}
 
-			return new ContentSafetyClient(new Uri(cscs), new Azure.AzureKeyCredential(csck));
+			if (useManagedIdentity || string.IsNullOrWhiteSpace(apiKey))
+			{
+				return new ContentSafetyClient(new Uri(endpoint), new DefaultAzureCredential());
+			}
+
+			return new ContentSafetyClient(new Uri(endpoint), new Azure.AzureKeyCredential(apiKey));
 		}
 	}
 }

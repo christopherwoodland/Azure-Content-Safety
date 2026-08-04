@@ -1,0 +1,31 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore .\NovelCsamDetection.sln --nologo
+
+      - name: Build (warnings as errors)
+        run: dotnet build .\NovelCsamDetection.sln --no-restore --nologo -warnaserror -p:WarningsNotAsErrors=CA1416%3BCS8767%3BCS8629%3BCS8618%3BCS8601%3BCS8602%3BCS8604%3BDURABLE0006
+
+      - name: Test
+        run: dotnet test .\NovelCsamDetection.Tests\NovelCsamDetection.Tests.csproj --no-build --nologo

@@ -4,7 +4,7 @@ namespace NovelCsam.Models.Orchestration
 {
     public class AnalyzeFrameOrchestrationModel : IAnalyzeFrameOrchestrationModel
     {
-        public CustomBinaryData Frame { get; set; }
+        public string BlobPath { get; set; }
         public string RunId { get; set; }
         public DateTime RunDateTime { get; set; }
 

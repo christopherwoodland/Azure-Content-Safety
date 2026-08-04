@@ -1,9 +1,12 @@
-﻿namespace NovelCsam.Helpers
+﻿#pragma warning disable OPENAI001
+
+namespace NovelCsam.Helpers
 {
 	public class VideoHelper : IVideoHelper
 	{
-		private readonly IKernelBuilder _kernelBuilder;
-		private readonly Kernel _kernel;
+		private readonly ProjectResponsesClient? _projectResponsesClient;
+		private readonly ResponsesClient? _responsesClient;
+		private readonly string _openAiTargetName = string.Empty;
 		private readonly IStorageHelper _sth;
 		private readonly IContentSafetyHelper _csh;
 		private readonly IAzureSQLHelper _ash;
@@ -15,34 +18,78 @@
 		private const string VIOLENCE = "violence";
 		private const string SEXUAL = "sexual";
 		private string _requestUri = "";
-		private string? _ioapi = null;
+		private readonly bool _invokeOpenAi;
+		private readonly int _openAiTimeoutSeconds;
 
-		public VideoHelper(IStorageHelper sth, IContentSafetyHelper csh, IAzureSQLHelper ash, HttpClient httpClient)
+		public VideoHelper(IStorageHelper sth, IContentSafetyHelper csh, IAzureSQLHelper ash, IHttpClientFactory httpClientFactory)
 		{
 			_requestUri = Environment.GetEnvironmentVariable("ANALYZE_FRAME_AZURE_FUNCTION_URL") ?? "";
 			_sth = sth;
 			_csh = csh;
 			_ash = ash;
-			_httpClient = httpClient;
+			_httpClient = httpClientFactory.CreateClient(nameof(VideoHelper));
+			_invokeOpenAi = string.Equals(Environment.GetEnvironmentVariable("INVOKE_OPEN_AI"), "true", StringComparison.OrdinalIgnoreCase);
+			_openAiTimeoutSeconds = int.TryParse(Environment.GetEnvironmentVariable("OPEN_AI_TIMEOUT_SECONDS"), out var parsedTimeout)
+				? Math.Max(30, parsedTimeout)
+				: 240;
 
-			_ioapi = Environment.GetEnvironmentVariable("INVOKE_OPEN_AI");
-
-			if (!string.IsNullOrEmpty(_ioapi) && _ioapi.ToLower() == "true")
+			if (_invokeOpenAi)
 			{
-				var oaidnm = Environment.GetEnvironmentVariable("OPEN_AI_DEPLOYMENT_NAME") ?? "";
-				var oaikey = Environment.GetEnvironmentVariable("OPEN_AI_KEY") ?? "";
-				var oaiendpoint = Environment.GetEnvironmentVariable("OPEN_AI_ENDPOINT") ?? "";
-				var oaimodel = Environment.GetEnvironmentVariable("OPEN_AI_MODEL") ?? "";
-				_kernelBuilder = Kernel.CreateBuilder();
+				var openAiEndpoint = Environment.GetEnvironmentVariable("OPEN_AI_ENDPOINT")
+					?? Environment.GetEnvironmentVariable("OPEN_AI_PROJECT_ENDPOINT")
+					?? string.Empty;
+				var openAiModel = Environment.GetEnvironmentVariable("OPEN_AI_MODEL") ?? string.Empty;
+				var openAiDeploymentName = Environment.GetEnvironmentVariable("OPEN_AI_DEPLOYMENT_NAME") ?? string.Empty;
+				var openAiTargetName = string.IsNullOrWhiteSpace(openAiDeploymentName) ? openAiModel : openAiDeploymentName;
+				_openAiTargetName = openAiTargetName;
+				var openAiUseManagedIdentity = !string.Equals(Environment.GetEnvironmentVariable("OPEN_AI_USE_MANAGED_IDENTITY"), "false", StringComparison.OrdinalIgnoreCase);
 
-				_kernelBuilder.AddAzureOpenAIChatCompletion(
-					deploymentName: oaidnm,
-					apiKey: oaikey,
-					endpoint: oaiendpoint,
-					modelId: oaimodel,
-					serviceId: Guid.NewGuid().ToString());
+				if (string.IsNullOrWhiteSpace(openAiEndpoint) || string.IsNullOrWhiteSpace(openAiTargetName))
+				{
+					throw new InvalidOperationException("OpenAI configuration is invalid. Set OPEN_AI_ENDPOINT and OPEN_AI_MODEL (or OPEN_AI_DEPLOYMENT_NAME).");
+				}
 
-				_kernel = _kernelBuilder.Build();
+				// Foundry project endpoints use /api/projects/{project}; direct model endpoints use /openai/v1.
+				if (openAiEndpoint.Contains("/api/projects/", StringComparison.OrdinalIgnoreCase))
+				{
+					if (!openAiUseManagedIdentity)
+					{
+						throw new InvalidOperationException("OPEN_AI_USE_MANAGED_IDENTITY must be true for Foundry project endpoints.");
+					}
+
+					var projectClient = new AIProjectClient(
+						endpoint: new Uri(openAiEndpoint),
+						tokenProvider: new DefaultAzureCredential());
+
+					_projectResponsesClient = projectClient.ProjectOpenAIClient.GetProjectResponsesClientForModel(openAiTargetName);
+				}
+				else
+				{
+					var normalizedEndpoint = NormalizeResponsesEndpoint(openAiEndpoint);
+					OpenAIClient openAiClient;
+
+					if (openAiUseManagedIdentity)
+					{
+						var tokenPolicy = new BearerTokenPolicy(new DefaultAzureCredential(), "https://ai.azure.com/.default");
+						openAiClient = new OpenAIClient(
+							authenticationPolicy: tokenPolicy,
+							options: new OpenAIClientOptions { Endpoint = new Uri(normalizedEndpoint) });
+					}
+					else
+					{
+						var openAiKey = Environment.GetEnvironmentVariable("OPEN_AI_KEY") ?? string.Empty;
+						if (string.IsNullOrWhiteSpace(openAiKey))
+						{
+							throw new InvalidOperationException("OPEN_AI_KEY must be set when OPEN_AI_USE_MANAGED_IDENTITY is false.");
+						}
+
+						openAiClient = new OpenAIClient(
+							credential: new ApiKeyCredential(openAiKey),
+							options: new OpenAIClientOptions { Endpoint = new Uri(normalizedEndpoint) });
+					}
+
+					_responsesClient = openAiClient.GetResponsesClient();
+				}
 			}
 		}
 
@@ -79,7 +126,7 @@
 				var air = await GetContentSafteyDetailsAsync(item.Value);
 				var summary = "";
 				var childYesNo = "";
-				if (!string.IsNullOrEmpty(_ioapi) && _ioapi.ToLower() == "true")
+				if (_invokeOpenAi)
 				{
 					summary = getSummaryB ? await SummarizeImageAsync(item.Value, "Can you do a detail analysis and tell me all the minute details about this image. Use no more than 450 words!!!") : string.Empty;
 					childYesNo = getChildYesNoB ? await SummarizeImageAsync(item.Value, "Is there a younger person, adolescent, or child in this image? If you can't make a determination ANSWER No, ONLY ANSWER Yes or No!!") : string.Empty;
@@ -105,16 +152,16 @@
 						switch (citem.Category.ToString().ToLowerInvariant())
 						{
 							case HATE:
-								newItem.Hate = (int)citem.Severity;
+								newItem.Hate = citem.Severity ?? 0;
 								break;
 							case SELF_HARM:
-								newItem.SelfHarm = (int)citem.Severity;
+								newItem.SelfHarm = citem.Severity ?? 0;
 								break;
 							case VIOLENCE:
-								newItem.Violence = (int)citem.Severity;
+								newItem.Violence = citem.Severity ?? 0;
 								break;
 							case SEXUAL:
-								newItem.Sexual = (int)citem.Severity;
+								newItem.Sexual = citem.Severity ?? 0;
 								break;
 						}
 					}
@@ -184,6 +231,11 @@
 		string containerFolderPath, string containerFolderPathResults, bool withBase64ofImage = false,
 		bool getSummaryB = true, bool getChildYesNoB = true, string runId = "")
 		{
+			if (string.IsNullOrWhiteSpace(_requestUri))
+			{
+				throw new InvalidOperationException("ANALYZE_FRAME_AZURE_FUNCTION_URL is not configured.");
+			}
+
 			var item = new
 			{
 				ImageBase64ToDB = withBase64ofImage,
@@ -194,19 +246,41 @@
 				RunId = runId
 			};
 			var ret = await CallFunctionHttpStartAsync(JsonConvert.SerializeObject(item));
-			DurableTaskInstance instance = JsonConvert.DeserializeObject<DurableTaskInstance>(ret);
+			DurableTaskInstance? instance = JsonConvert.DeserializeObject<DurableTaskInstance>(ret);
+			if (instance == null || string.IsNullOrWhiteSpace(instance.StatusQueryGetUri))
+			{
+				throw new InvalidOperationException("Durable orchestration start response is invalid.");
+			}
+
 			var status = await CallFunctionHttpStatusAsync(instance.StatusQueryGetUri);
-			OrchestrationStatus statusInstnace = JsonConvert.DeserializeObject<OrchestrationStatus>(status);
+			OrchestrationStatus? statusInstnace = JsonConvert.DeserializeObject<OrchestrationStatus>(status);
+			if (statusInstnace == null)
+			{
+				throw new InvalidOperationException("Unable to parse durable orchestration status.");
+			}
+
+			var nonTerminalStatuses = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+			{
+				"Pending",
+				"Running",
+				"ContinuedAsNew"
+			};
+
 			do
 			{
-				//Keep checking while the status is Running.
 				await Task.Delay(3000);
 
 				status = await CallFunctionHttpStatusAsync(instance.StatusQueryGetUri);
-				statusInstnace = JsonConvert.DeserializeObject<OrchestrationStatus>(status);
-			} while (string.IsNullOrEmpty(statusInstnace.RuntimeStatus) && statusInstnace.RuntimeStatus != "Completed" && statusInstnace.RuntimeStatus != "Failed" && statusInstnace.RuntimeStatus != "Terminated" && statusInstnace.RuntimeStatus != "Pending" && statusInstnace.RuntimeStatus != "Suspended" && statusInstnace.RuntimeStatus != "ContinuedAsNew" && statusInstnace.RuntimeStatus != "Canceled");
+				statusInstnace = JsonConvert.DeserializeObject<OrchestrationStatus>(status) ?? statusInstnace;
+			}
+			while (!string.IsNullOrWhiteSpace(statusInstnace.RuntimeStatus) && nonTerminalStatuses.Contains(statusInstnace.RuntimeStatus));
 
-			return statusInstnace.Input.ToString() ?? "";
+			if (!string.Equals(statusInstnace.RuntimeStatus, "Completed", StringComparison.OrdinalIgnoreCase))
+			{
+				throw new InvalidOperationException($"Orchestration ended with status '{statusInstnace.RuntimeStatus}'.");
+			}
+
+			return statusInstnace.Input?.ToString() ?? "";
 		}
 
 		public string ConvertToBase64(BinaryData imageData)
@@ -239,19 +313,43 @@
 			{
 				return await retryPolicy.ExecuteAsync(async () =>
 				{
-					var chat = _kernel.GetRequiredService<IChatCompletionService>();
-					var history = new ChatHistory();
-					history.AddSystemMessage("You are a helpful assistant that responds to questions directly");
-					var message = new ChatMessageContentItemCollection
+					if (_responsesClient == null && _projectResponsesClient == null)
 					{
-						new TextContent(userPrompt),
-						new ImageContent(imageBytes, GetMimeType(imageBytes))
+						return string.Empty;
+					}
+
+					var options = new CreateResponseOptions
+					{
+						InputItems =
+						{
+							ResponseItem.CreateUserMessageItem(
+							[
+								ResponseContentPart.CreateInputTextPart(userPrompt),
+								ResponseContentPart.CreateInputImagePart(new Uri(CreateImageDataUri(imageBytes)))
+							])
+						}
 					};
 
-					history.AddUserMessage(message);
-					var res = await chat.GetChatMessageContentAsync(history);
-					return res.Content ?? "NO SUMMARY GENERATED";
+					if (_projectResponsesClient == null)
+					{
+						options.Model = _openAiTargetName;
+					}
+
+					using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(_openAiTimeoutSeconds));
+					if (_projectResponsesClient != null)
+					{
+						var projectResponse = await _projectResponsesClient.CreateResponseAsync(options, timeoutCts.Token);
+						return projectResponse.Value.GetOutputText() ?? "NO SUMMARY GENERATED";
+					}
+
+					var response = await _responsesClient!.CreateResponseAsync(options, timeoutCts.Token);
+					return response.Value.GetOutputText() ?? "NO SUMMARY GENERATED";
 				});
+			}
+			catch (OperationCanceledException ocex)
+			{
+				LogHelper.LogException($"OpenAI call timed out after {_openAiTimeoutSeconds} seconds: {ocex.Message}", nameof(VideoHelper), nameof(SummarizeImageAsync), ocex);
+				return $"Error: OpenAI timeout after {_openAiTimeoutSeconds} seconds.";
 			}
 			catch (Exception ex)
 			{
@@ -312,28 +410,40 @@
 		private string GetMimeType(BinaryData imageData)
 		{
 			using var ms = new MemoryStream(imageData.ToArray());
-			using var image = Image.FromStream(ms);
-			return image.RawFormat switch
+			var format = Image.DetectFormat(ms);
+			return format?.DefaultMimeType ?? "application/octet-stream";
+		}
+
+		private static string NormalizeResponsesEndpoint(string endpoint)
+		{
+			var trimmed = endpoint.Trim().TrimEnd('/');
+
+			if (trimmed.EndsWith("/openai/v1", StringComparison.OrdinalIgnoreCase))
 			{
-				var format when ImageFormat.Jpeg.Equals(format) => "image/jpeg",
-				var format when ImageFormat.Png.Equals(format) => "image/png",
-				var format when ImageFormat.Gif.Equals(format) => "image/gif",
-				var format when ImageFormat.Bmp.Equals(format) => "image/bmp",
-				var format when ImageFormat.Tiff.Equals(format) => "image/tiff",
-				var format when ImageFormat.Icon.Equals(format) => "image/x-icon",
-				var format when ImageFormat.Emf.Equals(format) => "image/emf",
-				var format when ImageFormat.Exif.Equals(format) => "image/exif",
-				var format when ImageFormat.Wmf.Equals(format) => "image/wmf",
-				var format when ImageFormat.MemoryBmp.Equals(format) => "image/bmp",
-				_ => "application/octet-stream",
-			};
+				return trimmed;
+			}
+
+			if (trimmed.Contains(".services.ai.azure.com", StringComparison.OrdinalIgnoreCase)
+				|| trimmed.Contains(".openai.azure.com", StringComparison.OrdinalIgnoreCase))
+			{
+				return $"{trimmed}/openai/v1";
+			}
+
+			return trimmed;
+		}
+
+		private string CreateImageDataUri(BinaryData imageData)
+		{
+			var mimeType = GetMimeType(imageData);
+			var base64Image = Convert.ToBase64String(imageData.ToArray());
+			return $"data:{mimeType};base64,{base64Image}";
 		}
 
 		private async Task<List<string>> ExtractFramesAsync(string videoPath, int frameInterval = 1, string filename = "frame")
 		{
 			try
 			{
-				var outputDir = Path.GetDirectoryName(videoPath);
+				var outputDir = Path.GetDirectoryName(videoPath) ?? throw new InvalidOperationException("ExtractFramesAsync outputDir is null");
 				Directory.CreateDirectory(outputDir);
 
 				await RunFFmpegAsync(videoPath, outputDir, null, FFMPEG_MODE.FSEG, frameInterval);
@@ -383,13 +493,14 @@
 
 				if (mode == FFMPEG_MODE.VSEG)
 				{
+					var segmentTimeSeconds = (segmentDuration ?? TimeSpan.Zero).TotalSeconds;
 					string framePattern = Path.Combine(outputFilePath, $"output_%010d.mkv");
 					conversion.AddParameter($"-i \"{videoPath}\"")
 						.AddParameter($"-c:v ffv1")
 						.AddParameter($"-c:a copy")
 						.AddParameter($"-map 0")
-						.AddParameter($"-segment_time {segmentDuration.Value.TotalSeconds}")
-						.AddParameter($"-force_key_frames \"expr:gte(t,n_forced*{segmentDuration.Value.TotalSeconds})\"")
+						.AddParameter($"-segment_time {segmentTimeSeconds}")
+						.AddParameter($"-force_key_frames \"expr:gte(t,n_forced*{segmentTimeSeconds})\"")
 						.AddParameter($"-f segment")
 						.AddParameter($"-reset_timestamps 1")
 						.SetOutput(framePattern);

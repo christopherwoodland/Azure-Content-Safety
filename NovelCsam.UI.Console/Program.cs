@@ -25,7 +25,7 @@
 			return false;
 		}
 		Console.WriteLine("Enter a custom folder name please...");
-		var customFolderName = Console.ReadLine();
+		var customFolderName = Console.ReadLine() ?? string.Empty;
 		int folderIndex = 1;
 		string currentFolderName = GenerateFolderName(folderIndex);
 		string timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
@@ -117,7 +117,7 @@
 			.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
 			.Build();
 
-		var envVariables = new Dictionary<string, string>
+		var envVariables = new Dictionary<string, string?>
 		{
 			{ "AZURE_SQL_CONNECTION_STRING", configuration["Azure:SqlConnectionString"] },
 			{ "STORAGE_ACCOUNT_NAME", configuration["Azure:StorageAccountName"] },
@@ -151,7 +151,7 @@
 
 
 			}
-			Environment.SetEnvironmentVariable(envVariable.Key, envVariable.Value);
+			Environment.SetEnvironmentVariable(envVariable.Key, envVariable.Value ?? string.Empty);
 		}
 	}
 	#endregion
@@ -238,7 +238,7 @@
 			if (!string.IsNullOrEmpty(chosenDirValue))
 			{
 				var fileName = Path.GetFileName(chosenDirValue);
-				var folderPath = Path.GetDirectoryName(chosenDirValue).Replace("\\", "/");
+				var folderPath = (Path.GetDirectoryName(chosenDirValue) ?? string.Empty).Replace("\\", "/");
 
 				var progressBar = new NovelCsam.Helpers.ProgressBar();
 				var done = false;
@@ -474,12 +474,10 @@
 			ConfigureServices(serviceCollection);
 
 			var serviceProvider = serviceCollection.BuildServiceProvider();
-			var videoHelper = serviceProvider.GetService<IVideoHelper>();
-			var storageHelper = serviceProvider.GetService<IStorageHelper>();
-			var sqlHelper = serviceProvider.GetService<IAzureSQLHelper>();
-			var csvHelper = serviceProvider.GetService<ICsvExporter>();
-
-			if (videoHelper == null || storageHelper == null || sqlHelper == null) return;
+			var videoHelper = serviceProvider.GetRequiredService<IVideoHelper>();
+			var storageHelper = serviceProvider.GetRequiredService<IStorageHelper>();
+			var sqlHelper = serviceProvider.GetRequiredService<IAzureSQLHelper>();
+			var csvHelper = serviceProvider.GetRequiredService<ICsvExporter>();
 
 			string choice = PrintMenu();
 			while (choice != "x")

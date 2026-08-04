@@ -1,5 +1,20 @@
 # ContentSafteyDemo
 
+## Modernization Status
+
+- Runtime upgraded to .NET 10.
+- Azure Functions uses isolated worker with managed identity-first service access.
+- Durable orchestration now passes blob paths instead of binary payloads.
+- CI pipeline added under .github/workflows/ci.yml.
+
+## Hosting Target Decision
+
+Infrastructure deployment target is Azure Functions Flex Consumption (Linux).
+
+Important:
+- Current image-handling code uses System.Drawing APIs that are Windows-oriented.
+- For production Linux execution, replace image operations with a cross-platform library such as SixLabors.ImageSharp or SkiaSharp.
+
 ## Azure AI Content Safety
 
 - [https://learn.microsoft.com/en-us/azure/ai-services/content-safety/overview]()
@@ -19,8 +34,8 @@
 
 ## Prerequisites
 
-- .NET 8 SDK
-  - [Download .NET 8 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0).
+- .NET 10 SDK
+  - [Download .NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 - Azure Storage Account
 - Azure Content Safety Service
   - [https://learn.microsoft.com/en-us/azure/ai-services/content-safety/overview]()
@@ -40,91 +55,109 @@ cd NovelCsamDetection/NovelCsam.UI.Console
 
 ## Application Configuration
 
-The application requires configuration for Azure Storage, Content Safety services, Azure SQL Database, Azure Cosmos DB, OpenAI Service, and Application Insights. Update the `appsettings.json` file with your Azure credentials and settings.
+Functions runtime settings are configured with environment variables.
 
-**If  ***InvokeOpenAI* **is set to True, then please populate:**
+Use NovelCsam.Functions/local.settings.example.json as the baseline for local development.
 
-* **"OpenAiDeploymentName",**
-* **"OpenAiKey",**
-* **"OpenAiEndpoint",**
-* **"OpenAiModel"**
+### Core settings
 
-```
-{
-  "Azure": {
-    "SqlConnectionString": "",
-    "ContentSafety": {
-      "ContentSafetyConnectionString1": "",
-      "ContentSafetyConnectionKey1": "",
-      "ContentSafetyConnectionString2": "",
-      "ContentSafetyConnectionKey2": "",
-      "ContentSafetyConnectionString3": "",
-      "ContentSafetyConnectionKey3": ""
-    },
-    "StorageAccountName": "",
-    "StorageAccountKey": "",
-    "StorageAccountUrl": "",
-    "OpenAiDeploymentName": "",
-    "OpenAiKey": "",
-    "OpenAiEndpoint": "",
-    "OpenAiModel": "",
-    "AppInsightsConnectionString": "",
-    "AnalyzeFrameAzureFunctionUrl": "",
-    "InvokeOpenAI": "",
-    "DebugToConsole": "",
-    "AzureCloudDesignation": ""
-  }
-}
-```
+- FUNCTIONS_WORKER_RUNTIME
+- FUNCTIONS_WORKER_RUNTIME_VERSION
+- APPLICATIONINSIGHTS_CONNECTION_STRING
+- ANALYZE_FRAME_AZURE_FUNCTION_URL
 
-### Configuration Placeholders
+### Storage settings
 
-* **Azure SQL Connection String** : `"SqlConnectionString"`
-* **Content Safety Connection String** : `"ContentSafetyConnectionString"`
-* **Content Safety Connection Key** : `"ContentSafetyConnectionKey"`
-* **Storage Account Name** : `"StorageAccountName"`
-* **Storage Account Key** : `"StorageAccountKey"`
-* **Storage Account URL** : `"StorageAccountUrl"`
-* **OpenAI Deployment Name** : `"OpenAiDeploymentName"`
-* **OpenAI Key** : `"OpenAiKey"`
-* **OpenAI Endpoint** : `"OpenAiEndpoint"`
-* **OpenAI Model** : `"OpenAiModel"`
-* **App Insights Connection String** : `"AppInsightsConnectionString"`
-* **Invoke Open AI**: `"InvokeOpenAI"`
-* **Debug to Console**: `"DebugToConsole"`
+- STORAGE_USE_MANAGED_IDENTITY
+- AZURE_STORAGE_CONNECTION_STRING
+- STORAGE_ACCOUNT_NAME
+- STORAGE_ACCOUNT_URL
+- STORAGE_ACCOUNT_KEY
 
-## Configuration Definitions
+### SQL settings
 
-* **SqlConnectionString** :
-  * **Purpose** : Provides the connection string for connecting to an Azure SQL Database. This string includes the server address, database name, user credentials, and other connection settings.
-* **`ContentSafetyConnectionString`** :
-  * **Purpose** : Specifies the connection string for the Azure Content Safety service, which is used to access the content safety API.
-* **`ContentSafetyConnectionKey`** :
-  * **Purpose** : Contains the API key for authenticating with the Azure Content Safety service. This key is required to authorize requests to the content safety API.
-* **`StorageAccountName`** :
-  * **Purpose** : Specifies the name of the Azure Storage account. This name is used to identify the storage account within Azure.
-* **`StorageAccountUrl`** :
-  * **Purpose** : Specifies the URL for accessing the Azure Storage account. This URL is used to interact with the storage services provided by the account.
-* **`StorageAccountKey`** :
-  * **Purpose** : Provides the access key for the Azure Storage account. This key is used to authenticate and authorize access to the storage account.
-* **`OpenAiDeploymentName`** :
-  * **Purpose** : Indicates the deployment name for the OpenAI service. This name is used to identify the specific deployment of the OpenAI model.
-* **`OpenAiKey`** :
-  * **Purpose** : Contains the API key for authenticating with the OpenAI service. This key is required to authorize requests to the OpenAI API.
-* **`OpenAiEndpoint`** :
-  * **Purpose** : Specifies the endpoint URL for accessing the OpenAI service. This URL is used to send requests to the OpenAI API.
-* **`OpenAiModel`** :
-  * **Purpose** : Indicates the model name for the OpenAI service. This name is used to specify which OpenAI model to use for processing requests.
-* **`AppInsightsConnectionString`** :
-  * **Purpose** : Provides the connection string for Azure Application Insights. This string is used to configure telemetry data collection and monitoring.
-* **`AnalyzeFrameAzureFunctionUrl`** :
-  * **Purpose** : Specifies the URL for the Azure Function that analyzes frames. This URL is used to trigger the function and pass data for analysis.
-* **`InvokeOpenAI`** :
-  * **Purpose** : A flag indicating whether to invoke the OpenAI service. This flag is used to enable or disable calls to the OpenAI API.
-    * True or False value.
-* **`DebugToConsole`:**
-  * **Purpose** : A flag indicating whether to output debug information to the console. This flag is used to enable or disable console logging for debugging purposes.
-    * True or False value.
+- AZURE_SQL_CONNECTION_STRING
+- SQL_SERVER
+- SQL_DATABASE
+- SQL_MANAGED_IDENTITY_CLIENT_ID
+
+### Content Safety settings
+
+- CONTENT_SAFETY_USE_MANAGED_IDENTITY
+- CONTENT_SAFETY_ENDPOINT1
+- CONTENT_SAFETY_CONNECTION_KEY1
+- CONTENT_SAFETY_ENDPOINT2
+- CONTENT_SAFETY_CONNECTION_KEY2
+- CONTENT_SAFETY_ENDPOINT3
+- CONTENT_SAFETY_CONNECTION_KEY3
+
+### OpenAI settings
+
+- INVOKE_OPEN_AI
+- OPEN_AI_USE_MANAGED_IDENTITY
+- OPEN_AI_PROJECT_ENDPOINT
+- OPEN_AI_MODEL
+- OPEN_AI_TIMEOUT_SECONDS
+
+### Runtime tuning settings
+
+- RETRY_MAX_ATTEMPTS
+- RETRY_BACKOFF_MULTIPLIER
+- DURABLE_BATCH_SIZE
+- DETAILED_ANALYSIS_PROMPT
+- CHILD_DETECTION_PROMPT
+
+Managed identity is the default production pattern for Storage, SQL, and Content Safety.
+
+Managed identity is also the default for Azure OpenAI / Azure AI Foundry model invocation.
+
+For your Foundry project endpoint pattern, set:
+
+- OPEN_AI_PROJECT_ENDPOINT=https://<resource>.ai.azure.com/api/projects/<project>
+- OPEN_AI_MODEL=gpt-5.4
+- OPEN_AI_USE_MANAGED_IDENTITY=true
+- OPEN_AI_TIMEOUT_SECONDS=240
+
+Key-based auth remains available as fallback. Secret-valued app settings should be provided via Key Vault references.
+
+Key Vault reference format:
+
+@Microsoft.KeyVault(SecretUri=https://<vault-name>.vault.azure.net/secrets/<secret-name>/<version>)
+
+## Build and Test
+
+Run locally from repository root:
+
+dotnet build .\NovelCsamDetection.sln --nologo
+dotnet test .\NovelCsamDetection.Tests\NovelCsamDetection.Tests.csproj --nologo
+
+## CI Quality Gate
+
+GitHub Actions workflow:
+- .github/workflows/ci.yml
+
+CI performs:
+- restore
+- build with warnings as errors
+- test execution
+
+## Managed Identity Validation Checklist
+
+After deployment, validate identity and data-plane access:
+
+1. Confirm function identity is enabled.
+2. Confirm role assignment on Storage Account:
+   - Storage Blob Data Contributor
+3. Confirm Key Vault role assignment if Key Vault references are used:
+   - Key Vault Secrets User
+4. Confirm SQL access for managed identity (database user and required roles).
+5. Confirm Content Safety access for the managed identity.
+
+Example commands:
+
+az functionapp identity show --name <function-app-name> --resource-group <resource-group>
+az role assignment list --assignee <principal-id> --resource-group <resource-group> -o table
+az functionapp config appsettings list --name <function-app-name> --resource-group <resource-group> -o table
 
 ## Code Structure
 
@@ -154,4 +187,4 @@ This project is licensed under the MIT License. See the LICENSE file for details
 
 ## Contact
 
-For any questions or support, please contact [c](vscode-file://vscode-app/c:/Users/cwoodland/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html)woodland@microsoft.com.
+For any questions or support, please contact cwoodland@microsoft.com.

@@ -5,70 +5,141 @@ namespace NovelCsam.Functions.Functions
 {
 	public class ImageProcessingOrchestrator
 	{
-		private readonly IStorageHelper _sth;
-		public ImageProcessingOrchestrator(IStorageHelper sth)
+		private readonly IStorageHelper _storageHelper;
+		private readonly int _durableBatchSize;
+		private readonly string _jsonExportFolderPath;
+		private readonly string _jsonExportContainerName;
+		private const int DEFAULT_DURABLE_BATCH_SIZE = 25;
+		private const string DEFAULT_JSON_EXPORT_FOLDER_PATH = "json-results";
+
+		public ImageProcessingOrchestrator(IStorageHelper storageHelper)
 		{
-			_sth = sth;
+			_storageHelper = storageHelper;
+			_durableBatchSize = int.TryParse(Environment.GetEnvironmentVariable("DURABLE_BATCH_SIZE"), out var parsedBatchSize)
+				? Math.Max(1, parsedBatchSize)
+				: DEFAULT_DURABLE_BATCH_SIZE;
+			_jsonExportFolderPath = Environment.GetEnvironmentVariable("JSON_EXPORT_FOLDER_PATH") ?? DEFAULT_JSON_EXPORT_FOLDER_PATH;
+			_jsonExportContainerName = Environment.GetEnvironmentVariable("JSON_EXPORT_CONTAINER_NAME") ?? string.Empty;
 		}
 
 		[Function(nameof(ImageProcessingOrchestrator))]
 		public async Task<string> RunOrchestrator(
 			[OrchestrationTrigger] TaskOrchestrationContext context)
 		{
-			try
+			LogHelper.LogInformation("ImageProcessingOrchestrator Started", nameof(ImageProcessingOrchestrator), nameof(RunOrchestrator));
+			var fom = JsonConvert.DeserializeObject<FrameOrchestrationModel>(context.GetInput<string>() ?? "");
+			if (fom == null)
 			{
-				LogHelper.LogInformation("ImageProcessingOrchestrator Started", nameof(ImageProcessingOrchestrator), nameof(RunOrchestrator));
-				var fom = JsonConvert.DeserializeObject<FrameOrchestrationModel>(context.GetInput<string>() ?? "");
-				if (fom != null)
+				throw new InvalidOperationException("Orchestration payload is null or invalid.");
+			}
+
+			var totalFrames = 0;
+			var processedFrames = 0;
+			var failedFrames = 0;
+			var frameResultBlobs = new List<string>();
+			var startedAtUtc = context.CurrentUtcDateTime;
+
+			var framePaths = await context.CallActivityAsync<List<string>>("ListBlobs", new ListBlobModel
+			{
+				ContainerName = fom.ContainerName,
+				ContainerDirectory = fom.ContainerDirectory
+			});
+
+			if (framePaths == null || framePaths.Count == 0)
+			{
+				LogHelper.LogInformation("No frames found for orchestration request.", nameof(ImageProcessingOrchestrator), nameof(RunOrchestrator));
+				return fom.RunId;
+			}
+
+			totalFrames = framePaths.Count;
+			context.SetCustomStatus(new JobProgressStatus
+			{
+				JobId = fom.RunId,
+				RuntimeStatus = "Running",
+				TotalFrames = totalFrames,
+				ProcessedFrames = 0,
+				FailedFrames = 0,
+				CurrentBatchSize = 0,
+				UpdatedAtUtc = context.CurrentUtcDateTime
+			});
+
+			var batchSize = _durableBatchSize;
+
+			for (var i = 0; i < framePaths.Count; i += batchSize)
+			{
+				var tasks = new List<Task<bool>>();
+				var limit = Math.Min(i + batchSize, framePaths.Count);
+
+				for (var index = i; index < limit; index++)
 				{
-					AnalyzeFrameOrchestrationModel afm = new()
+					var analyzePayload = new AnalyzeFrameOrchestrationModel
 					{
+						BlobPath = framePaths[index],
 						GetSummary = fom.GetSummary,
 						GetChildYesNo = fom.GetChildYesNo,
 						ContainerDirectory = fom.ContainerDirectory,
 						ContainerName = fom.ContainerName,
 						ImageBase64ToDB = fom.ImageBase64ToDB,
-						RunId = fom.RunId
+						RunId = fom.RunId,
+						RunDateTime = context.CurrentUtcDateTime
 					};
 
-					var frames = await context.CallActivityAsync<Dictionary<string, CustomBinaryData>>("ListBlobs", new { fom.ContainerName, fom.ContainerDirectory });
-					var runDateTime = DateTime.UtcNow;
-					afm.RunDateTime = runDateTime;
-
-					var withBase64ofImage = fom.ImageBase64ToDB;
-					var getSummaryB = fom.GetSummary;
-					var getChildYesNoB = fom.GetChildYesNo;
-					var tasks = new List<Task<bool>>();
-
-					// Fan-Out: Start multiple tasks in parallel to resize the image in different resolutions
-					foreach (var frame in frames)
-					{
-						afm.Frame = frame.Value;
-						//afm.Frame.Key = frame.Key;
-						var task = context.CallActivityAsync<bool>("AnalyzeFrame", afm);
-						tasks.Add(task);
-					}
-					// Wait for all tasks to complete (Fan-In)
-					await Task.WhenAll(tasks);
-
-					return afm.RunId;
+					tasks.Add(context.CallActivityAsync<bool>("AnalyzeFrame", analyzePayload));
 				}
-				else
+
+				var batchResults = await Task.WhenAll(tasks);
+				processedFrames += batchResults.Length;
+				failedFrames += batchResults.Count(result => !result);
+				context.SetCustomStatus(new JobProgressStatus
 				{
-					LogHelper.LogInformation($"Frame model is null", nameof(ImageProcessingOrchestrator), nameof(RunOrchestrator));
-					return "";
-				}
+					JobId = fom.RunId,
+					RuntimeStatus = "Running",
+					TotalFrames = totalFrames,
+					ProcessedFrames = processedFrames,
+					FailedFrames = failedFrames,
+					CurrentBatchSize = batchResults.Length,
+					CurrentFrame = limit > 0 ? framePaths[limit - 1] : null,
+					UpdatedAtUtc = context.CurrentUtcDateTime
+				});
 			}
-			catch (Exception ex)
+
+			var exportFolderPath = _jsonExportFolderPath;
+			var exportContainerName = string.IsNullOrWhiteSpace(_jsonExportContainerName) ? fom.ContainerName : _jsonExportContainerName;
+			var manifest = new JobResultManifest
 			{
-				LogHelper.LogException($"An error occurred when processing an image: {ex.Message}", nameof(ImageProcessingOrchestrator), nameof(RunOrchestrator), ex);
-				return "";
-			}
+				JobId = fom.RunId,
+				ContainerName = fom.ContainerName,
+				ContainerDirectory = fom.ContainerDirectory,
+				Status = failedFrames > 0 ? "CompletedWithErrors" : "Completed",
+				TotalFrames = totalFrames,
+				ProcessedFrames = processedFrames,
+				SuccessfulFrames = processedFrames - failedFrames,
+				FailedFrames = failedFrames,
+				StartedAtUtc = startedAtUtc,
+				CompletedAtUtc = context.CurrentUtcDateTime,
+				ExportContainerName = exportContainerName,
+				ExportFolderPath = exportFolderPath,
+				FrameResultBlobs = frameResultBlobs
+			};
+
+			await context.CallActivityAsync<bool>("WriteJobManifest", manifest);
+			context.SetCustomStatus(new JobProgressStatus
+			{
+				JobId = fom.RunId,
+				RuntimeStatus = manifest.Status,
+				TotalFrames = totalFrames,
+				ProcessedFrames = processedFrames,
+				FailedFrames = failedFrames,
+				CurrentBatchSize = 0,
+				UpdatedAtUtc = context.CurrentUtcDateTime
+			});
+
+			return fom.RunId;
 		}
 
 		[Function("AnalyzeFrames_HttpStart")]
 		public static async Task<HttpResponseData> HttpStart(
-			[HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequestData req,
+			[HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req,
 			[DurableClient] DurableTaskClient client,
 			FunctionContext executionContext)
 		{
@@ -84,6 +155,24 @@ namespace NovelCsam.Functions.Functions
 			// Returns an HTTP 202 response with an instance management payload.
 			// See https://learn.microsoft.com/azure/azure-functions/durable/durable-functions-http-api#start-orchestration
 			return await client.CreateCheckStatusResponseAsync(req, instanceId);
+		}
+
+		[Function("WriteJobManifest")]
+		public async Task<bool> WriteJobManifestAsync([ActivityTrigger] JobResultManifest item)
+		{
+			try
+			{
+				var manifestJson = JsonConvert.SerializeObject(item, Formatting.Indented);
+				var exportFolder = string.IsNullOrWhiteSpace(item.ExportFolderPath) ? DEFAULT_JSON_EXPORT_FOLDER_PATH : item.ExportFolderPath.Trim('/');
+				var exportContainer = string.IsNullOrWhiteSpace(item.ExportContainerName) ? item.ContainerName : item.ExportContainerName;
+				await _storageHelper.UploadTextAsync(exportContainer, exportFolder, $"{item.JobId}/job-result.json", manifestJson);
+				return true;
+			}
+			catch (Exception ex)
+			{
+				LogHelper.LogException($"An error occurred when writing the job manifest: {ex.Message}", nameof(ImageProcessingOrchestrator), nameof(WriteJobManifestAsync), ex);
+				return false;
+			}
 		}
 	}
 }

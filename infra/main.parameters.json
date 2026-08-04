@@ -1,0 +1,66 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {
+      "value": "dev"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "functionAppName": {
+      "value": ""
+    },
+    "storageAccountName": {
+      "value": ""
+    },
+    "sqlServer": {
+      "value": ""
+    },
+    "sqlDatabase": {
+      "value": ""
+    },
+    "keyVaultName": {
+      "value": ""
+    },
+    "sqlConnectionSecretUri": {
+      "value": ""
+    },
+    "contentSafetyEndpoint1": {
+      "value": ""
+    },
+    "contentSafetyConnectionKey1SecretUri": {
+      "value": ""
+    },
+    "contentSafetyEndpoint2": {
+      "value": ""
+    },
+    "contentSafetyConnectionKey2SecretUri": {
+      "value": ""
+    },
+    "contentSafetyEndpoint3": {
+      "value": ""
+    },
+    "contentSafetyConnectionKey3SecretUri": {
+      "value": ""
+    },
+    "invokeOpenAi": {
+      "value": false
+    },
+    "openAiEndpoint": {
+      "value": ""
+    },
+    "openAiDeploymentName": {
+      "value": ""
+    },
+    "openAiUseManagedIdentity": {
+      "value": true
+    },
+    "openAiModel": {
+      "value": ""
+    },
+    "openAiTimeoutSeconds": {
+      "value": 240
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "FUNCTIONS_WORKER_RUNTIME_VERSION": "10",
+
+    "APPLICATIONINSIGHTS_CONNECTION_STRING": "",
+    "ANALYZE_FRAME_AZURE_FUNCTION_URL": "http://localhost:7092/api/AnalyzeFrames_HttpStart?code=",
+
+    "STORAGE_USE_MANAGED_IDENTITY": "false",
+    "AZURE_STORAGE_CONNECTION_STRING": "UseDevelopmentStorage=true",
+    "STORAGE_ACCOUNT_NAME": "",
+    "STORAGE_ACCOUNT_URL": "",
+    "STORAGE_ACCOUNT_KEY": "",
+
+    "AZURE_SQL_CONNECTION_STRING": "",
+    "SQL_SERVER": "",
+    "SQL_DATABASE": "",
+    "SQL_MANAGED_IDENTITY_CLIENT_ID": "",
+
+    "CONTENT_SAFETY_USE_MANAGED_IDENTITY": "false",
+    "CONTENT_SAFETY_ENDPOINT1": "",
+    "CONTENT_SAFETY_CONNECTION_KEY1": "",
+    "CONTENT_SAFETY_ENDPOINT2": "",
+    "CONTENT_SAFETY_CONNECTION_KEY2": "",
+    "CONTENT_SAFETY_ENDPOINT3": "",
+    "CONTENT_SAFETY_CONNECTION_KEY3": "",
+
+    "INVOKE_OPEN_AI": "false",
+    "OPEN_AI_USE_MANAGED_IDENTITY": "true",
+    "OPEN_AI_PROJECT_ENDPOINT": "https://<resource>.ai.azure.com/api/projects/<project>",
+    "OPEN_AI_MODEL": "",
+    "OPEN_AI_TIMEOUT_SECONDS": "240",
+
+    "RETRY_MAX_ATTEMPTS": "3",
+    "RETRY_BACKOFF_MULTIPLIER": "2.0",
+    "DURABLE_BATCH_SIZE": "25",
+    "DETAILED_ANALYSIS_PROMPT": "Can you do a detail analysis and tell me all the minute details about this image. Use no more than 450 words!!!",
+    "CHILD_DETECTION_PROMPT": "Is there a younger person or child in this image? If you can't make a determination ANSWER No, ONLY ANSWER Yes or No!!"
+  }
+}
