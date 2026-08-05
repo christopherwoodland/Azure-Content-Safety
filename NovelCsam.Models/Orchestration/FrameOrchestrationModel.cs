@@ -21,5 +21,7 @@ namespace NovelCsam.Models.Orchestration
         public int FrameIntervalSeconds { get; set; } = 1;
         [JsonProperty(PropertyName = "extractedFramesDirectory")]
         public string ExtractedFramesDirectory { get; set; } = string.Empty;
+		[JsonProperty(PropertyName = "archiveSourceOnSuccess")]
+		public bool ArchiveSourceOnSuccess { get; set; }
 	}
 }

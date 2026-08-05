@@ -40,9 +40,12 @@ namespace NovelCsam.Helpers
 
 			if (_invokeOpenAi)
 			{
-				var openAiEndpoint = Environment.GetEnvironmentVariable("OPEN_AI_ENDPOINT")
-					?? Environment.GetEnvironmentVariable("OPEN_AI_PROJECT_ENDPOINT")
-					?? string.Empty;
+				var openAiEndpoint = Environment.GetEnvironmentVariable("OPEN_AI_ENDPOINT");
+				if (string.IsNullOrWhiteSpace(openAiEndpoint))
+				{
+					openAiEndpoint = Environment.GetEnvironmentVariable("OPEN_AI_PROJECT_ENDPOINT");
+				}
+				openAiEndpoint ??= string.Empty;
 				var openAiModel = Environment.GetEnvironmentVariable("OPEN_AI_MODEL") ?? string.Empty;
 				var openAiDeploymentName = Environment.GetEnvironmentVariable("OPEN_AI_DEPLOYMENT_NAME") ?? string.Empty;
 				var openAiTargetName = string.IsNullOrWhiteSpace(openAiDeploymentName) ? openAiModel : openAiDeploymentName;
@@ -51,7 +54,7 @@ namespace NovelCsam.Helpers
 
 				if (string.IsNullOrWhiteSpace(openAiEndpoint) || string.IsNullOrWhiteSpace(openAiTargetName))
 				{
-					throw new InvalidOperationException("OpenAI configuration is invalid. Set OPEN_AI_ENDPOINT and OPEN_AI_MODEL (or OPEN_AI_DEPLOYMENT_NAME).");
+					throw new InvalidOperationException("OpenAI configuration is invalid. Set OPEN_AI_ENDPOINT or OPEN_AI_PROJECT_ENDPOINT, and set OPEN_AI_MODEL (or OPEN_AI_DEPLOYMENT_NAME).");
 				}
 
 				// Foundry project endpoints use /api/projects/{project}; direct model endpoints use /openai/v1.
@@ -177,7 +180,7 @@ namespace NovelCsam.Helpers
 				{
 					JobId = runId,
 					Frame = item.Key,
-					FrameResult = newItem with { ImageBase64 = null },
+					FrameResult = newItem,
 					ExportedAtUtc = DateTime.UtcNow
 				}, Formatting.Indented);
 				var exportPath = await _sth.UploadTextAsync(containerName, exportFolder, exportBlobName, jsonDocument);

@@ -18,5 +18,7 @@
         int FrameIntervalSeconds { get; set; }
         [JsonProperty(PropertyName = "extractedFramesDirectory")]
         string ExtractedFramesDirectory { get; set; }
+        [JsonProperty(PropertyName = "archiveSourceOnSuccess")]
+        bool ArchiveSourceOnSuccess { get; set; }
 	}
 }

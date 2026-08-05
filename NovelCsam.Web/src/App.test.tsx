@@ -53,6 +53,9 @@ describe('App wizard flow', () => {
     await userEvent.clear(containerNameInput);
 
     expect(continueButton).toBeDisabled();
+
+    const archiveToggle = screen.getByLabelText(/archive input files after success/i);
+    expect(archiveToggle).not.toBeChecked();
   });
 
   it('moves to review step and starts analysis with expected payload', async () => {
@@ -87,14 +90,37 @@ describe('App wizard flow', () => {
       frameIntervalSeconds: 5,
       runId: '00000000-0000-4000-8000-000000000123',
       getChildYesNo: true,
-      getSummary: false,
-      imageBase64ToDB: false
+      getSummary: true,
+      imageBase64ToDB: true,
+      archiveSourceOnSuccess: false
     });
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /live durable orchestration status/i })).toBeInTheDocument();
     });
 
-    expect(screen.getByText(/orchestration submitted\. run id 00000000-0000-4000-8000-000000000123/i)).toBeInTheDocument();
+    expect(screen.getByText(/\[DURABLE\] submitted: runId=00000000-0000-4000-8000-000000000123/i)).toBeInTheDocument();
+  });
+
+  it('sends archiveSourceOnSuccess=true when archive toggle is enabled', async () => {
+    render(<App />);
+
+    await userEvent.click(screen.getByLabelText(/archive input files after success/i));
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await userEvent.click(screen.getByRole('button', { name: /continue to launch/i }));
+    await userEvent.click(screen.getByRole('button', { name: /start analysis/i }));
+
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        'http://localhost:7092/api/AnalyzeFrames_HttpStart',
+        expect.objectContaining({ method: 'POST' })
+      );
+    });
+
+    const startCall = vi.mocked(globalThis.fetch).mock.calls.find((call) => String(call[0]).includes('/api/AnalyzeFrames_HttpStart'));
+    expect(startCall).toBeDefined();
+
+    const body = JSON.parse(String(startCall?.[1]?.body ?? '{}')) as Record<string, unknown>;
+    expect(body.archiveSourceOnSuccess).toBe(true);
   });
 });

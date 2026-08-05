@@ -85,6 +85,7 @@ public class VideoHelperExportTests
         public Task<IReadOnlyList<string>> ListBlobPathsAsync(string containerName, string folderPath, int maxDepth = 10) => throw new NotImplementedException();
         public Task<BinaryData?> GetBlobAsBinaryDataAsync(string containerName, string blobPath, bool resize = true, int maxSizeBytes = 4194304) => throw new NotImplementedException();
         public Task<Dictionary<int, string>> ListDirectoriesInFolderAsync(string containerName, string folderPath, int maxDepth = 10) => throw new NotImplementedException();
+        public Task<bool> MoveBlobAsync(string containerName, string sourceBlobPath, string destinationBlobPath, bool overwrite = false) => throw new NotImplementedException();
     }
 
     private sealed record UploadTextCall(string ContainerName, string FolderPath, string FileName, string Content);

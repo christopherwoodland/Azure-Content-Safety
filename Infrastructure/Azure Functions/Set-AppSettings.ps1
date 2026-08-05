@@ -27,6 +27,8 @@ $AppSettings = @{
     "INVOKE_OPEN_AI" = "false"
     "OPEN_AI_USE_MANAGED_IDENTITY" = "true"
     "OPEN_AI_PROJECT_ENDPOINT" = ""
+    "OPEN_AI_ENDPOINT" = ""
+    "OPEN_AI_DEPLOYMENT_NAME" = ""
     "OPEN_AI_MODEL" = ""
     "OPEN_AI_TIMEOUT_SECONDS" = "2147483647"
 

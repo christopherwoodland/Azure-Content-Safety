@@ -44,7 +44,7 @@ Edit `main.parameters.json` or set values in your azd environment for:
 
 - location
 - contentSafetyEndpoint1/2/3
-- openAiEndpoint/openAiDeploymentName/openAiModel
+- openAiProjectEndpoint/openAiEndpoint/openAiDeploymentName/openAiModel
 - openAiUseManagedIdentity
 - openAiTimeoutSeconds
 - keyVaultName
@@ -52,11 +52,14 @@ Edit `main.parameters.json` or set values in your azd environment for:
 - contentSafetyConnectionKey2SecretUri
 - contentSafetyConnectionKey3SecretUri
 
+No infra parameter is required for source-archive behavior in the web wizard. The archive policy is request-driven via payload field `archiveSourceOnSuccess`.
+
 Storage settings are wired to the existing `cwacstest001` account in `DefaultResourceGroup-CCAN`.
 
 For Azure OpenAI/Azure AI Foundry in managed identity mode:
 - set openAiUseManagedIdentity to true
-- set openAiEndpoint to your project endpoint (for example: https://<project>.services.ai.azure.com)
+- set openAiProjectEndpoint to your project endpoint (for example: https://<resource>.ai.azure.com/api/projects/<project>)
+- if openAiEndpoint is also set, it takes precedence over openAiProjectEndpoint
 - set openAiModel to your model name (for example: gpt-5.4)
 - openAiTimeoutSeconds defaults to 2147483647 (max int) for effectively no timeout
 

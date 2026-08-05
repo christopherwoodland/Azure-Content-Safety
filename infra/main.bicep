@@ -42,6 +42,9 @@ param invokeOpenAi bool = false
 @description('Optional Azure OpenAI endpoint URI.')
 param openAiEndpoint string = ''
 
+@description('Optional Azure OpenAI Foundry project endpoint URI.')
+param openAiProjectEndpoint string = ''
+
 @description('Optional Azure OpenAI deployment name.')
 param openAiDeploymentName string = ''
 
@@ -58,6 +61,7 @@ var normalizedEnv = toLower(replace(environmentName, '-', ''))
 var unique = toLower(take(uniqueString(resourceGroup().id, environmentName), 6))
 var storageName = empty(storageAccountName) ? 'cwacstest001' : toLower(storageAccountName)
 var appName = empty(functionAppName) ? take('func-${normalizedEnv}-${unique}', 60) : functionAppName
+var effectiveOpenAiEndpoint = empty(openAiEndpoint) ? openAiProjectEndpoint : openAiEndpoint
 var contentSafetyKey1SettingValue = empty(contentSafetyConnectionKey1SecretUri) ? '' : '@Microsoft.KeyVault(SecretUri=${contentSafetyConnectionKey1SecretUri})'
 var contentSafetyKey2SettingValue = empty(contentSafetyConnectionKey2SecretUri) ? '' : '@Microsoft.KeyVault(SecretUri=${contentSafetyConnectionKey2SecretUri})'
 var contentSafetyKey3SettingValue = empty(contentSafetyConnectionKey3SecretUri) ? '' : '@Microsoft.KeyVault(SecretUri=${contentSafetyConnectionKey3SecretUri})'
@@ -197,7 +201,11 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         }
         {
           name: 'OPEN_AI_ENDPOINT'
-          value: openAiEndpoint
+          value: effectiveOpenAiEndpoint
+        }
+        {
+          name: 'OPEN_AI_PROJECT_ENDPOINT'
+          value: openAiProjectEndpoint
         }
         {
           name: 'OPEN_AI_DEPLOYMENT_NAME'

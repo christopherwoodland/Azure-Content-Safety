@@ -255,7 +255,7 @@ namespace NovelCsam.Functions.Functions
 
 			await context.CallActivityAsync<bool>("WriteJobManifest", manifest);
 
-			if (failedFrames == 0 && processableSourcePaths.Count > 0)
+			if (fom.ArchiveSourceOnSuccess && failedFrames == 0 && processableSourcePaths.Count > 0)
 			{
 				foreach (var sourcePath in processableSourcePaths)
 				{

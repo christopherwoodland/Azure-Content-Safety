@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 
-type WizardStep = 'setup' | 'upload' | 'review' | 'monitor' | 'results' | 'history';
+type WizardStep = 'setup' | 'upload' | 'review' | 'monitor' | 'results' | 'detail' | 'history';
 type Severity = 'none' | 'low' | 'medium' | 'high';
 
 type StepState = {
@@ -17,6 +17,7 @@ type WizardForm = {
   pollingIntervalSeconds: number;
   getSummary: boolean;
   getChildYesNo: boolean;
+  archiveSourceOnSuccess: boolean;
 };
 
 type StartResponse = {
@@ -112,7 +113,8 @@ const steps: StepState[] = [
   { id: 'review', label: 'Step 3', description: 'Confirm payload and launch' },
   { id: 'monitor', label: 'Step 4', description: 'Track durable orchestration' },
   { id: 'results', label: 'Step 5', description: 'Inspect frame outputs' },
-  { id: 'history', label: 'Step 6', description: 'Review past runs' }
+  { id: 'detail', label: 'Step 6', description: 'Frame detail page' },
+  { id: 'history', label: 'Step 7', description: 'Review past runs' }
 ];
 
 const initialForm: WizardForm = {
@@ -122,7 +124,8 @@ const initialForm: WizardForm = {
   frameIntervalSeconds: 2,
   pollingIntervalSeconds: 8,
   getSummary: true,
-  getChildYesNo: true
+  getChildYesNo: true,
+  archiveSourceOnSuccess: false
 };
 
 function App() {
@@ -171,11 +174,11 @@ function App() {
 
   const selectedResult = useMemo(() => {
     if (!selectedResultId) {
-      return filteredRows[0] ?? null;
+      return resultRows[0] ?? null;
     }
 
-    return filteredRows.find((row) => row.id === selectedResultId) ?? filteredRows[0] ?? null;
-  }, [filteredRows, selectedResultId]);
+    return resultRows.find((row) => row.id === selectedResultId) ?? resultRows[0] ?? null;
+  }, [resultRows, selectedResultId]);
 
   const serviceStats = useMemo(() => {
     const total = resultRows.length;
@@ -197,6 +200,10 @@ function App() {
 
   useEffect(() => {
     if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (!hasLocalStorage(window)) {
       return;
     }
 
@@ -351,7 +358,8 @@ function App() {
         getChildYesNo: form.getChildYesNo,
         runId: generatedRunId,
         frameIntervalSeconds: Math.max(1, Math.floor(form.frameIntervalSeconds)),
-        extractedFramesDirectory: form.extractedFramesDirectory.trim() || 'extracted'
+        extractedFramesDirectory: form.extractedFramesDirectory.trim() || 'extracted',
+        archiveSourceOnSuccess: form.archiveSourceOnSuccess
       };
 
       const response = await fetch(getStartUrl(), {
@@ -384,7 +392,7 @@ function App() {
         setLogItems,
         'service',
         'call_plan',
-        `contentSafety=enabled openAiSummary=${form.getSummary ? 'enabled' : 'disabled'} openAiChild=${form.getChildYesNo ? 'enabled' : 'disabled'}`
+        `contentSafety=enabled openAiSummary=${form.getSummary ? 'enabled' : 'disabled'} openAiChild=${form.getChildYesNo ? 'enabled' : 'disabled'} archiveOnSuccess=${form.archiveSourceOnSuccess ? 'enabled' : 'disabled'}`
       );
     } catch (err) {
       setErrorMessage(getErrorMessage(err));
@@ -440,6 +448,11 @@ function App() {
     } finally {
       setIsLoadingHistoryRun(false);
     }
+  }
+
+  function openResultDetail(rowId: string): void {
+    setSelectedResultId(rowId);
+    setStep('detail');
   }
 
   return (
@@ -549,6 +562,12 @@ function App() {
                   checked={form.getChildYesNo}
                   onChange={(checked) => setForm((prev) => ({ ...prev, getChildYesNo: checked }))}
                 />
+                <ToggleCard
+                  label="Archive input files after success"
+                  description="Move analyzed source files from input to processed after a successful run"
+                  checked={form.archiveSourceOnSuccess}
+                  onChange={(checked) => setForm((prev) => ({ ...prev, archiveSourceOnSuccess: checked }))}
+                />
               </div>
 
               <div className="button-row">
@@ -633,6 +652,7 @@ function App() {
                   containerDirectory: form.containerDirectory,
                   frameIntervalSeconds: form.frameIntervalSeconds,
                   extractedFramesDirectory: form.extractedFramesDirectory,
+                  archiveSourceOnSuccess: form.archiveSourceOnSuccess,
                   statusPollingIntervalSeconds: statusPollingSeconds
                 },
                 null,
@@ -730,59 +750,11 @@ function App() {
               </div>
 
               <div className="result-window">
-                {selectedResult ? (
-                  <article className="detail-card" aria-live="polite">
-                    <div className="detail-card-top">
-                      <h3>{selectedResult.frame}</h3>
-                      <span className={`severity severity-${selectedResult.severity}`}>
-                        {selectedResult.severity} ({selectedResult.score})
-                      </span>
-                    </div>
-                    <p className="help-copy">Blob path: {selectedResult.frameResultBlobPath}</p>
-                    <div className="detail-metrics">
-                      <Metric label="Hate" value={String(selectedResult.hate)} />
-                      <Metric label="Self-harm" value={String(selectedResult.selfHarm)} />
-                      <Metric label="Violence" value={String(selectedResult.violence)} />
-                      <Metric label="Sexual" value={String(selectedResult.sexual)} />
-                    </div>
-                    {selectedResult.imageBase64 ? (
-                      <div className="detail-image-wrap">
-                        <img
-                          className="detail-image"
-                          src={toDataUrl(selectedResult.imageBase64)}
-                          alt={`Frame preview for ${selectedResult.frame}`}
-                          loading="lazy"
-                        />
-                      </div>
-                    ) : (
-                      <p className="help-copy">No image payload available for this frame.</p>
-                    )}
-                    <p>
-                      <strong>Content Safety observed:</strong> {selectedResult.contentSafetyObserved ? 'Yes' : 'No'}
-                    </p>
-                    <p>
-                      <strong>Summary observed:</strong> {selectedResult.summaryObserved ? 'Yes' : 'No'}
-                    </p>
-                    <p>
-                      <strong>Child check observed:</strong> {selectedResult.childCheckObserved ? 'Yes' : 'No'}
-                    </p>
-                    <p>
-                      <strong>Child check value:</strong> {selectedResult.childCheck || 'Not requested'}
-                    </p>
-                    <p>
-                      <strong>Summary:</strong> {selectedResult.summary || 'No summary returned for this frame.'}
-                    </p>
-                  </article>
-                ) : null}
-
                 {filteredRows.length === 0 ? <p className="help-copy">No frame rows loaded or matching this filter.</p> : null}
                 {filteredRows.map((row) => (
-                  <button
+                  <article
                     key={row.id}
-                    type="button"
-                    className={`result-card result-card-button ${selectedResult?.id === row.id ? 'result-card-selected' : ''}`}
-                    onClick={() => setSelectedResultId(row.id)}
-                    aria-pressed={selectedResult?.id === row.id}
+                    className={`result-card ${selectedResult?.id === row.id ? 'result-card-selected' : ''}`}
                   >
                     <div className="result-card-top">
                       <strong>{row.frame}</strong>
@@ -791,9 +763,17 @@ function App() {
                     <p>{row.summary || 'No summary returned for this frame.'}</p>
                     <div className="result-card-meta">
                       <span>Child check: {row.childCheck || 'Not requested'}</span>
-                      <span>Click for details</span>
+                      <button
+                        type="button"
+                        className="detail-link-button"
+                        aria-label={`View details for ${row.frame}`}
+                        onClick={() => openResultDetail(row.id)}
+                      >
+                        <span>View details</span>
+                        <span className="detail-link-icon" aria-hidden="true">→</span>
+                      </button>
                     </div>
-                  </button>
+                  </article>
                 ))}
               </div>
 
@@ -804,9 +784,68 @@ function App() {
             </div>
           ) : null}
 
-          {step === 'history' ? (
+          {step === 'detail' ? (
             <div className="wizard-panel fade-in">
               <p className="panel-kicker">Step 6</p>
+              <h2>Frame details</h2>
+
+              {selectedResult ? (
+                <article className="detail-card" aria-live="polite">
+                  <div className="detail-card-top">
+                    <h3>{selectedResult.frame}</h3>
+                    <span className={`severity severity-${selectedResult.severity}`}>
+                      {selectedResult.severity} ({selectedResult.score})
+                    </span>
+                  </div>
+                  <p className="help-copy">Blob path: {selectedResult.frameResultBlobPath}</p>
+                  <div className="detail-metrics">
+                    <Metric label="Hate" value={String(selectedResult.hate)} />
+                    <Metric label="Self-harm" value={String(selectedResult.selfHarm)} />
+                    <Metric label="Violence" value={String(selectedResult.violence)} />
+                    <Metric label="Sexual" value={String(selectedResult.sexual)} />
+                  </div>
+                  {selectedResult.imageBase64 ? (
+                    <div className="detail-image-wrap">
+                      <img
+                        className="detail-image"
+                        src={toDataUrl(selectedResult.imageBase64)}
+                        alt={`Frame preview for ${selectedResult.frame}`}
+                        loading="lazy"
+                      />
+                    </div>
+                  ) : (
+                    <p className="help-copy">No image payload available for this frame.</p>
+                  )}
+                  <p>
+                    <strong>Content Safety observed:</strong> {selectedResult.contentSafetyObserved ? 'Yes' : 'No'}
+                  </p>
+                  <p>
+                    <strong>Summary observed:</strong> {selectedResult.summaryObserved ? 'Yes' : 'No'}
+                  </p>
+                  <p>
+                    <strong>Child check observed:</strong> {selectedResult.childCheckObserved ? 'Yes' : 'No'}
+                  </p>
+                  <p>
+                    <strong>Child check value:</strong> {selectedResult.childCheck || 'Not requested'}
+                  </p>
+                  <p>
+                    <strong>Summary:</strong> {selectedResult.summary || 'No summary returned for this frame.'}
+                  </p>
+                </article>
+              ) : (
+                <p className="help-copy">No frame selected yet. Open a completed run and choose a frame from Results.</p>
+              )}
+
+              <div className="button-row">
+                <button className="secondary" onClick={() => setStep('results')}>Back to results</button>
+                <button className="secondary" onClick={() => setStep('history')}>View history</button>
+              </div>
+            </div>
+          ) : null}
+
+          {step === 'history' ? (
+            <div className="wizard-panel fade-in">
+              <p className="panel-kicker">Step 7</p>
               <h2>Past run history</h2>
               <p className="help-copy">This list is stored in your browser for quick run recall.</p>
 
@@ -912,14 +951,18 @@ async function hydrateResults(
     const rows = await Promise.all(frameBlobPaths.slice(0, 120).map(async (blobPath, index) => {
       const frameResultUrl = appendSas(`${RESULTS_CONTAINER_URL.replace(/\/$/, '')}/${blobPath}`);
       const frameData = await getJson<Record<string, unknown>>(frameResultUrl);
-      const summaryText = String(frameData.Summary ?? '');
-      const childCheckText = String(frameData.ChildYesNo ?? '');
-      const imageBase64 = String(frameData.ImageBase64 ?? frameData.imageBase64 ?? '');
+      const nestedFrameResult = (frameData.FrameResult && typeof frameData.FrameResult === 'object')
+        ? (frameData.FrameResult as Record<string, unknown>)
+        : null;
+      const framePayload = nestedFrameResult ?? frameData;
+      const summaryText = String(framePayload.Summary ?? '');
+      const childCheckText = String(framePayload.ChildYesNo ?? '');
+      const imageBase64 = String(framePayload.ImageBase64 ?? framePayload.imageBase64 ?? '');
       const contentSafetyObserved =
-        frameData.Hate !== undefined ||
-        frameData.SelfHarm !== undefined ||
-        frameData.Violence !== undefined ||
-        frameData.Sexual !== undefined;
+        framePayload.Hate !== undefined ||
+        framePayload.SelfHarm !== undefined ||
+        framePayload.Violence !== undefined ||
+        framePayload.Sexual !== undefined;
       const summaryObserved =
         summaryText.trim().length > 0 &&
         summaryText.toLowerCase() !== 'not requested' &&
@@ -929,19 +972,19 @@ async function hydrateResults(
         childCheckText.toLowerCase() !== 'not requested' &&
         !childCheckText.toLowerCase().startsWith('failed');
       const maxScore = Math.max(
-        safeNumber(frameData.Hate),
-        safeNumber(frameData.SelfHarm),
-        safeNumber(frameData.Violence),
-        safeNumber(frameData.Sexual)
+        safeNumber(framePayload.Hate),
+        safeNumber(framePayload.SelfHarm),
+        safeNumber(framePayload.Violence),
+        safeNumber(framePayload.Sexual)
       );
-      const hate = safeNumber(frameData.Hate);
-      const selfHarm = safeNumber(frameData.SelfHarm);
-      const violence = safeNumber(frameData.Violence);
-      const sexual = safeNumber(frameData.Sexual);
+      const hate = safeNumber(framePayload.Hate);
+      const selfHarm = safeNumber(framePayload.SelfHarm);
+      const violence = safeNumber(framePayload.Violence);
+      const sexual = safeNumber(framePayload.Sexual);
 
       return {
         id: `${blobPath}-${index}`,
-        frame: String(frameData.Frame ?? blobPath),
+        frame: String(framePayload.Frame ?? frameData.Frame ?? blobPath),
         frameResultBlobPath: blobPath,
         severity: toSeverity(maxScore),
         score: maxScore,
@@ -1197,6 +1240,10 @@ function loadRunHistory(): RunHistoryItem[] {
     return [];
   }
 
+  if (!hasLocalStorage(window)) {
+    return [];
+  }
+
   const raw = window.localStorage.getItem(RUN_HISTORY_STORAGE_KEY);
   if (!raw) {
     return [];
@@ -1211,6 +1258,14 @@ function loadRunHistory(): RunHistoryItem[] {
     return parsed.filter((item) => Boolean(item?.runId));
   } catch {
     return [];
+  }
+}
+
+function hasLocalStorage(value: Window): boolean {
+  try {
+    return typeof value.localStorage !== 'undefined' && value.localStorage !== null;
+  } catch {
+    return false;
   }
 }
 

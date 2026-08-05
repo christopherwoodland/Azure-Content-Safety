@@ -371,3 +371,6 @@ FodyWeavers.xsd
 /NovelCsam.UI.Console/appsettings.json
 /NovelCsam.Functions/local.settings.json
 /NovelCsam.Functions/appsettings.json
+
+# Local Azurite emulator state
+/.azurite/

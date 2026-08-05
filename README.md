@@ -93,6 +93,8 @@ For managed identity, set `CONTENT_SAFETY_USE_MANAGED_IDENTITY=true` and set `CO
 - INVOKE_OPEN_AI
 - OPEN_AI_USE_MANAGED_IDENTITY
 - OPEN_AI_PROJECT_ENDPOINT
+- OPEN_AI_ENDPOINT
+- OPEN_AI_DEPLOYMENT_NAME
 - OPEN_AI_MODEL
 - OPEN_AI_TIMEOUT_SECONDS
 
@@ -116,6 +118,11 @@ For your Foundry project endpoint pattern, set:
 - OPEN_AI_MODEL=gpt-5.4
 - OPEN_AI_USE_MANAGED_IDENTITY=true
 - OPEN_AI_TIMEOUT_SECONDS=2147483647
+
+Fallback endpoint/deployment variables are also supported:
+
+- OPEN_AI_ENDPOINT=https://<resource>.services.ai.azure.com
+- OPEN_AI_DEPLOYMENT_NAME=<deployment-name>
 
 Key-based auth remains available as fallback. Secret-valued app settings should be provided via Key Vault references.
 
@@ -173,6 +180,16 @@ This application persists frame-level and run-level outputs as JSON blobs in Azu
 - Run manifest: `results/{runId}/job-result.json`
 
 The console export flow reads the manifest and frame JSON blobs and writes CSV locally.
+
+## Web Wizard Notes
+
+The React wizard in `NovelCsam.Web` includes a per-run archive policy in Step 1:
+
+- `Archive input files after success` is disabled by default.
+- Disabled means source files remain in `videos/input` after successful completion so repeated runs can process the same inputs without manual re-upload.
+- Enabled moves successfully processed source files to `videos/processed/{runId}/` after a run completes with no frame failures.
+
+In Step 5 (results), each frame card has a pill action button labeled `View details` that opens the frame detail page.
 
 ## Contributing
 

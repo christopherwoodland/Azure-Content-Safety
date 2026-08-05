@@ -148,7 +148,7 @@ namespace NovelCsam.Functions.Functions
 				{
 					JobId = item.RunId,
 					Frame = item.BlobPath,
-					FrameResult = newItem with { ImageBase64 = null },
+					FrameResult = newItem,
 					ExportedAtUtc = DateTime.UtcNow
 				}, Formatting.Indented);
 				var exportPath = await _sth.UploadTextAsync(exportContainer, exportFolder, exportBlobName, jsonDocument);
