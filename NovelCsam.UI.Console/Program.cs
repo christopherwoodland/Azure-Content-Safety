@@ -1,4 +1,8 @@
-﻿internal class Program
+﻿using Newtonsoft.Json;
+using NovelCsam.Models;
+using NovelCsam.Models.Interfaces;
+
+internal class Program
 {
 	#region Constants
 	private const int FilesPerFolder = 100;
@@ -101,7 +105,6 @@
 	#region Configuration Methods
 	private static void ConfigureServices(IServiceCollection services)
 	{
-		services.AddScoped<IAzureSQLHelper, AzureSQLHelper>();
 		services.AddTransient<IContentSafetyHelper, ContentSafetyHelper>();
 		services.AddTransient<IStorageHelper, StorageHelper>();
 		services.AddTransient<ICsvExporter, CsvExporter>();
@@ -119,7 +122,6 @@
 
 		var envVariables = new Dictionary<string, string?>
 		{
-			{ "AZURE_SQL_CONNECTION_STRING", configuration["Azure:SqlConnectionString"] },
 			{ "STORAGE_ACCOUNT_NAME", configuration["Azure:StorageAccountName"] },
 			{ "STORAGE_ACCOUNT_KEY", configuration["Azure:StorageAccountKey"] },
 			{ "STORAGE_ACCOUNT_URL", configuration["Azure:StorageAccountUrl"] },
@@ -385,10 +387,10 @@
 	#endregion
 
 	#region Export Methods
-	private static async Task ExportRunAsync(IVideoHelper videoHelper, IStorageHelper storageHelper, IAzureSQLHelper sqlHelper,
+	private static async Task ExportRunAsync(IStorageHelper storageHelper,
 		string containerName, string extractedFolder, string resultsFolder, ICsvExporter csvHelper)
 	{
-		var dirList = await storageHelper.ListDirectoriesInFolderAsync(containerName, extractedFolder, 2) ?? [];
+		var dirList = await storageHelper.ListDirectoriesInFolderAsync(containerName, resultsFolder, 2) ?? [];
 		if (dirList?.Count > 0)
 		{
 			int chosenDirKey;
@@ -412,15 +414,38 @@
 
 			if (!string.IsNullOrEmpty(chosenDirValue))
 			{
-				var records = await sqlHelper.GetFrameResultWithLevelsAsync(chosenDirValue);
-				if (records?.Count != 0)
+				var manifestPath = $"{resultsFolder}/{chosenDirValue}/job-result.json";
+				var manifestJson = await storageHelper.DownloadTextAsync(containerName, manifestPath);
+				var manifest = string.IsNullOrWhiteSpace(manifestJson)
+					? null
+					: JsonConvert.DeserializeObject<JobResultManifest>(manifestJson);
+				var frameResultBlobs = manifest?.FrameResultBlobs ?? [];
+				if (frameResultBlobs.Count != 0)
 				{
 					Console.WriteLine("Enter your export file name..e.g. output.csv");
 					var userInput = Console.ReadLine();
 
-					if (records == null || userInput == null)
+					if (userInput == null)
 					{
-						throw new Exception("Records and/or UserInput is null");
+						throw new Exception("UserInput is null");
+					}
+
+					var records = new List<IFrameDetailResult>();
+					foreach (var blobPath in frameResultBlobs)
+					{
+						var recordJson = await storageHelper.DownloadTextAsync(containerName, blobPath);
+						if (string.IsNullOrWhiteSpace(recordJson))
+						{
+							continue;
+						}
+
+						var recordEnvelope = JsonConvert.DeserializeObject<FrameResultEnvelope>(recordJson);
+						if (recordEnvelope?.FrameResult == null)
+						{
+							continue;
+						}
+
+						records.Add(recordEnvelope.FrameResult);
 					}
 
 					var progressBar = new NovelCsam.Helpers.ProgressBar();
@@ -476,7 +501,6 @@
 			var serviceProvider = serviceCollection.BuildServiceProvider();
 			var videoHelper = serviceProvider.GetRequiredService<IVideoHelper>();
 			var storageHelper = serviceProvider.GetRequiredService<IStorageHelper>();
-			var sqlHelper = serviceProvider.GetRequiredService<IAzureSQLHelper>();
 			var csvHelper = serviceProvider.GetRequiredService<ICsvExporter>();
 
 			string choice = PrintMenu();
@@ -516,7 +540,7 @@
 						await RunSafetyAnalysisAsync(videoHelper, storageHelper, ContainerVideos, ContainerExtracted, ContainerResults);
 						break;
 					case "5":
-						await ExportRunAsync(videoHelper, storageHelper, sqlHelper, ContainerVideos, ContainerExtracted, ContainerResults, csvHelper);
+						await ExportRunAsync(storageHelper, ContainerVideos, ContainerExtracted, ContainerResults, csvHelper);
 						break;
 					case "6":
 						await RunSafetyAnalysisDurableFunctionAsync(videoHelper, storageHelper, ContainerVideos, ContainerExtracted, ContainerResults);
@@ -533,6 +557,11 @@
 			//var logHelper = serviceProvider.GetService<ILogHelper>();
 			LogHelper.LogException($"An error occurred during run in main: {ex.Message}", nameof(Program), nameof(Main), ex);
 		}
+	}
+
+	private sealed class FrameResultEnvelope
+	{
+		public FrameDetailResult? FrameResult { get; set; }
 	}
 	#endregion
 }

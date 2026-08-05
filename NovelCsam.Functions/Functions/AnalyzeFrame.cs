@@ -3,12 +3,9 @@ namespace NovelCsam.Functions.Functions
 	public class AnalyzeFrame
 	{
 		private readonly IStorageHelper _sth;
-		private readonly IAzureSQLHelper _ash;
 		private readonly IVideoHelper _videoHelper;
 		private readonly AsyncRetryPolicy _retryPolicy;
 		private readonly bool _invokeOpenAi;
-		private readonly bool _enableSqlPersistence;
-		private readonly bool _enableJsonExport;
 		private readonly string _jsonExportContainerName;
 		private readonly string _jsonExportFolderPath;
 		private readonly string _detailedPrompt;
@@ -20,16 +17,13 @@ namespace NovelCsam.Functions.Functions
 		private const string DEFAULT_DETAILED_PROMPT = "Can you do a detail analysis and tell me all the minute details about this image. Use no more than 450 words!!!";
 		private const string DEFAULT_CHILD_PROMPT = "Is there a younger person or child in this image? If you can't make a determination ANSWER No, ONLY ANSWER Yes or No!!";
 
-		public AnalyzeFrame(IStorageHelper sth, IAzureSQLHelper ash, IVideoHelper videoHelper)
+		public AnalyzeFrame(IStorageHelper sth, IVideoHelper videoHelper)
 		{
 			_sth = sth;
-			_ash = ash;
 			_videoHelper = videoHelper;
 			_invokeOpenAi = string.Equals(Environment.GetEnvironmentVariable("INVOKE_OPEN_AI"), "true", StringComparison.OrdinalIgnoreCase);
-			_enableSqlPersistence = !string.Equals(Environment.GetEnvironmentVariable("ENABLE_SQL_PERSISTENCE"), "false", StringComparison.OrdinalIgnoreCase);
-			_enableJsonExport = string.Equals(Environment.GetEnvironmentVariable("ENABLE_JSON_EXPORT"), "true", StringComparison.OrdinalIgnoreCase);
 			_jsonExportContainerName = Environment.GetEnvironmentVariable("JSON_EXPORT_CONTAINER_NAME") ?? string.Empty;
-			_jsonExportFolderPath = Environment.GetEnvironmentVariable("JSON_EXPORT_FOLDER_PATH") ?? "json-results";
+			_jsonExportFolderPath = Environment.GetEnvironmentVariable("JSON_EXPORT_FOLDER_PATH") ?? "results";
 			_detailedPrompt = Environment.GetEnvironmentVariable("DETAILED_ANALYSIS_PROMPT") ?? DEFAULT_DETAILED_PROMPT;
 			_childDetectionPrompt = Environment.GetEnvironmentVariable("CHILD_DETECTION_PROMPT") ?? DEFAULT_CHILD_PROMPT;
 
@@ -50,7 +44,7 @@ namespace NovelCsam.Functions.Functions
 		}
 
 		[Function("AnalyzeFrame")]
-		public async Task<bool> RunAnalyzeFrameAsync([ActivityTrigger] AnalyzeFrameOrchestrationModel item, FunctionContext executionContext)
+		public async Task<string?> RunAnalyzeFrameAsync([ActivityTrigger] AnalyzeFrameOrchestrationModel item, FunctionContext executionContext)
 		{
 			try
 			{
@@ -58,7 +52,7 @@ namespace NovelCsam.Functions.Functions
 				if (frameBinaryData == null)
 				{
 					LogHelper.LogInformation($"Skipping frame because blob could not be loaded: {item.BlobPath}", nameof(AnalyzeFrame), nameof(RunAnalyzeFrameAsync));
-					return false;
+					return null;
 				}
 
 				var air = await _retryPolicy.ExecuteAsync(() => _videoHelper.GetContentSafteyDetailsAsync(frameBinaryData));
@@ -108,37 +102,24 @@ namespace NovelCsam.Functions.Functions
 					}
 				}
 
-				if (_enableSqlPersistence)
+				var exportContainer = string.IsNullOrWhiteSpace(_jsonExportContainerName) ? item.ContainerName : _jsonExportContainerName;
+				var exportFolder = string.IsNullOrWhiteSpace(_jsonExportFolderPath) ? "results" : _jsonExportFolderPath.Trim('/');
+				var exportBlobName = $"{item.RunId}/{Path.GetFileNameWithoutExtension(item.BlobPath)}.json";
+				var jsonDocument = JsonConvert.SerializeObject(new
 				{
-					var created = await _ash.CreateFrameResult(newItem);
-					if (created == null)
-					{
-						return false;
-					}
-				}
+					JobId = item.RunId,
+					Frame = item.BlobPath,
+					FrameResult = newItem with { ImageBase64 = null },
+					ExportedAtUtc = DateTime.UtcNow
+				}, Formatting.Indented);
+				var exportPath = await _sth.UploadTextAsync(exportContainer, exportFolder, exportBlobName, jsonDocument);
 
-				if (_enableJsonExport)
-				{
-					var exportContainer = string.IsNullOrWhiteSpace(_jsonExportContainerName) ? item.ContainerName : _jsonExportContainerName;
-					var exportFolder = string.IsNullOrWhiteSpace(_jsonExportFolderPath) ? "json-results" : _jsonExportFolderPath.Trim('/');
-					var exportBlobName = $"{item.RunId}/{Path.GetFileNameWithoutExtension(item.BlobPath)}.json";
-					var exportPath = $"{exportFolder}/{exportBlobName}";
-					var jsonDocument = JsonConvert.SerializeObject(new
-					{
-						JobId = item.RunId,
-						Frame = item.BlobPath,
-						FrameResult = newItem with { ImageBase64 = null },
-						ExportedAtUtc = DateTime.UtcNow
-					}, Formatting.Indented);
-					await _sth.UploadTextAsync(exportContainer, exportFolder, exportBlobName, jsonDocument);
-				}
-
-				return true;
+				return exportPath;
 			}
 			catch (Exception ex)
 			{
 				LogHelper.LogException($"An error occurred when processing an image: {ex.Message}", nameof(AnalyzeFrame), nameof(RunAnalyzeFrameAsync), ex);
-				return false;
+				return null;
 			}
 		}
 	}

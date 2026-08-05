@@ -7,7 +7,6 @@ global using Azure.Storage.Files.DataLake;
 global using CsvHelper;
 global using CsvHelper.Configuration;
 global using Microsoft.Azure.Cosmos;
-global using Microsoft.Data.SqlClient;
 global using Microsoft.Extensions.Logging;
 global using Azure.AI.Extensions.OpenAI;
 global using Azure.AI.Projects;
@@ -35,8 +34,6 @@ global using SixLabors.ImageSharp.Formats;
 global using SixLabors.ImageSharp.Formats.Jpeg;
 global using SixLabors.ImageSharp.Processing;
 global using Xabe.FFmpeg;
-global using SqlConnection = Microsoft.Data.SqlClient.SqlConnection;
-global using SqlException = Microsoft.Data.SqlClient.SqlException;
 
 global using Azure.Monitor.OpenTelemetry.Exporter;
 global using OpenTelemetry;

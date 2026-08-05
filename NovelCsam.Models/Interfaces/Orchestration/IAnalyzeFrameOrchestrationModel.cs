@@ -3,7 +3,7 @@
     public interface IAnalyzeFrameOrchestrationModel
     {
         string BlobPath { get; set; }
-        string? RunId { get; set; }
+        string RunId { get; set; }
         DateTime RunDateTime { get; set; }
 
         string ContainerName { get; set; }

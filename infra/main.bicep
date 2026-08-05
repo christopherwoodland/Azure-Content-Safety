@@ -12,17 +12,8 @@ param functionAppName string = ''
 @description('Optional override for the Storage Account name. Leave empty to auto-generate.')
 param storageAccountName string = ''
 
-@description('Optional Azure SQL logical server name for managed identity SQL auth fallback.')
-param sqlServer string = ''
-
-@description('Optional Azure SQL database name for managed identity SQL auth fallback.')
-param sqlDatabase string = ''
-
 @description('Optional Key Vault name in the same resource group. Required for Key Vault references and secret role assignment.')
 param keyVaultName string = ''
-
-@description('Optional Key Vault secret URI for AZURE_SQL_CONNECTION_STRING app setting.')
-param sqlConnectionSecretUri string = ''
 
 @description('Primary Content Safety endpoint URI. Example: https://my-content-safety.cognitiveservices.azure.com')
 param contentSafetyEndpoint1 string = ''
@@ -64,7 +55,6 @@ var normalizedEnv = toLower(replace(environmentName, '-', ''))
 var unique = toLower(take(uniqueString(resourceGroup().id, environmentName), 6))
 var storageName = empty(storageAccountName) ? take('st${normalizedEnv}${unique}', 24) : toLower(storageAccountName)
 var appName = empty(functionAppName) ? take('func-${normalizedEnv}-${unique}', 60) : functionAppName
-var sqlConnectionSettingValue = empty(sqlConnectionSecretUri) ? '' : '@Microsoft.KeyVault(SecretUri=${sqlConnectionSecretUri})'
 var contentSafetyKey1SettingValue = empty(contentSafetyConnectionKey1SecretUri) ? '' : '@Microsoft.KeyVault(SecretUri=${contentSafetyConnectionKey1SecretUri})'
 var contentSafetyKey2SettingValue = empty(contentSafetyConnectionKey2SecretUri) ? '' : '@Microsoft.KeyVault(SecretUri=${contentSafetyConnectionKey2SecretUri})'
 var contentSafetyKey3SettingValue = empty(contentSafetyConnectionKey3SecretUri) ? '' : '@Microsoft.KeyVault(SecretUri=${contentSafetyConnectionKey3SecretUri})'
@@ -179,18 +169,6 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'STORAGE_ACCOUNT_URL'
           value: 'https://${storage.name}.dfs.${environment().suffixes.storage}'
-        }
-        {
-          name: 'AZURE_SQL_CONNECTION_STRING'
-          value: sqlConnectionSettingValue
-        }
-        {
-          name: 'SQL_SERVER'
-          value: sqlServer
-        }
-        {
-          name: 'SQL_DATABASE'
-          value: sqlDatabase
         }
         {
           name: 'CONTENT_SAFETY_USE_MANAGED_IDENTITY'

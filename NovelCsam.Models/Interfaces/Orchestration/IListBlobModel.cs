@@ -1,8 +1,8 @@
 ﻿namespace NovelCsam.Models.Interfaces.Orchestration
 {
-    public  class IListBlobModel
+    public interface IListBlobModel
     {
-        public string ContainerName { get; set; }
-		public string ContainerDirectory { get; set; }
+        string ContainerName { get; set; }
+		string ContainerDirectory { get; set; }
     }
 }

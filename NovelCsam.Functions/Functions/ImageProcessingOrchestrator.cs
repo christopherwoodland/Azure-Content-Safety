@@ -10,7 +10,7 @@ namespace NovelCsam.Functions.Functions
 		private readonly string _jsonExportFolderPath;
 		private readonly string _jsonExportContainerName;
 		private const int DEFAULT_DURABLE_BATCH_SIZE = 25;
-		private const string DEFAULT_JSON_EXPORT_FOLDER_PATH = "json-results";
+		private const string DEFAULT_JSON_EXPORT_FOLDER_PATH = "results";
 
 		public ImageProcessingOrchestrator(IStorageHelper storageHelper)
 		{
@@ -67,7 +67,7 @@ namespace NovelCsam.Functions.Functions
 
 			for (var i = 0; i < framePaths.Count; i += batchSize)
 			{
-				var tasks = new List<Task<bool>>();
+				var tasks = new List<Task<string?>>();
 				var limit = Math.Min(i + batchSize, framePaths.Count);
 
 				for (var index = i; index < limit; index++)
@@ -84,12 +84,13 @@ namespace NovelCsam.Functions.Functions
 						RunDateTime = context.CurrentUtcDateTime
 					};
 
-					tasks.Add(context.CallActivityAsync<bool>("AnalyzeFrame", analyzePayload));
+					tasks.Add(context.CallActivityAsync<string?>("AnalyzeFrame", analyzePayload));
 				}
 
 				var batchResults = await Task.WhenAll(tasks);
 				processedFrames += batchResults.Length;
-				failedFrames += batchResults.Count(result => !result);
+				failedFrames += batchResults.Count(result => string.IsNullOrWhiteSpace(result));
+				frameResultBlobs.AddRange(batchResults.Where(result => !string.IsNullOrWhiteSpace(result)).Select(result => result!));
 				context.SetCustomStatus(new JobProgressStatus
 				{
 					JobId = fom.RunId,

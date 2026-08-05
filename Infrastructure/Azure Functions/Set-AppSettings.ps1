@@ -16,11 +16,6 @@ $AppSettings = @{
     "STORAGE_ACCOUNT_NAME" = ""
     "STORAGE_ACCOUNT_URL" = ""
 
-    "AZURE_SQL_CONNECTION_STRING" = "@Microsoft.KeyVault(SecretUri=)"
-    "SQL_SERVER" = ""
-    "SQL_DATABASE" = ""
-    "SQL_MANAGED_IDENTITY_CLIENT_ID" = ""
-
     "CONTENT_SAFETY_USE_MANAGED_IDENTITY" = "true"
     "CONTENT_SAFETY_ENDPOINT1" = ""
     "CONTENT_SAFETY_CONNECTION_KEY1" = "@Microsoft.KeyVault(SecretUri=)"

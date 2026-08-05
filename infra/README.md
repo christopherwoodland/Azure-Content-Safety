@@ -8,7 +8,7 @@ Hosting target for this deployment is Flex Consumption (Linux).
 
 - Azure Storage Account (Data Lake Gen2 enabled)
 - Application Insights resource
-- Consumption Function App (Windows) with system-assigned managed identity
+- Consumption Function App (Linux) with system-assigned managed identity
 - RBAC assignment: Storage Blob Data Contributor on the storage account for the Function App identity
 
 ## Deployment with Azure Developer CLI
@@ -33,8 +33,8 @@ Hosting target for this deployment is Flex Consumption (Linux).
 ## Managed identity notes
 
 - Storage data access is configured to use managed identity through app settings.
-- SQL and Content Safety are configured for managed identity-first operation in code.
-- You must grant the Function App managed identity the required data-plane permissions in Azure SQL and AI Content Safety.
+- Content Safety is configured for managed identity-first operation in code.
+- You must grant the Function App managed identity the required data-plane permissions in AI Content Safety.
 - If Key Vault references are used for secrets, assign Key Vault Secrets User to the Function App managed identity.
 
 ## Parameters
@@ -42,14 +42,11 @@ Hosting target for this deployment is Flex Consumption (Linux).
 Edit `main.parameters.json` or set values in your azd environment for:
 
 - location
-- sqlServer
-- sqlDatabase
 - contentSafetyEndpoint1/2/3
 - openAiEndpoint/openAiDeploymentName/openAiModel
 - openAiUseManagedIdentity
 - openAiTimeoutSeconds
 - keyVaultName
-- sqlConnectionSecretUri
 - contentSafetyConnectionKey1SecretUri
 - contentSafetyConnectionKey2SecretUri
 - contentSafetyConnectionKey3SecretUri

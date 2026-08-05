@@ -5,9 +5,9 @@ namespace NovelCsam.Models.Orchestration
     public class FrameOrchestrationModel : IFrameOrchestrationModel
     {
         [JsonProperty(PropertyName = "containerName")]
-        public string ContainerName { get; set; }
+        public string ContainerName { get; set; } = string.Empty;
         [JsonProperty(PropertyName = "containerDirectory")]
-        public string ContainerDirectory { get; set; }
+        public string ContainerDirectory { get; set; } = string.Empty;
         [JsonProperty(PropertyName = "imageBase64ToDB")]
         public bool ImageBase64ToDB { get; set; }
         [JsonProperty(PropertyName = "getSummary")]
@@ -16,6 +16,6 @@ namespace NovelCsam.Models.Orchestration
         public bool GetChildYesNo { get; set; }
 
 		[JsonProperty(PropertyName = "runId")]
-		public string RunId{ get; set; }
+        public string RunId{ get; set; } = string.Empty;
 	}
 }

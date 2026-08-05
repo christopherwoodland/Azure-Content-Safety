@@ -14,16 +14,7 @@
     "storageAccountName": {
       "value": ""
     },
-    "sqlServer": {
-      "value": ""
-    },
-    "sqlDatabase": {
-      "value": ""
-    },
     "keyVaultName": {
-      "value": ""
-    },
-    "sqlConnectionSecretUri": {
       "value": ""
     },
     "contentSafetyEndpoint1": {

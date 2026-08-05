@@ -9,7 +9,6 @@ namespace NovelCsam.Helpers
 		private readonly string _openAiTargetName = string.Empty;
 		private readonly IStorageHelper _sth;
 		private readonly IContentSafetyHelper _csh;
-		private readonly IAzureSQLHelper _ash;
 
 		private readonly HttpClient _httpClient;
 		private enum FFMPEG_MODE { VSEG = 0, FSEG = 1 }
@@ -21,12 +20,11 @@ namespace NovelCsam.Helpers
 		private readonly bool _invokeOpenAi;
 		private readonly int _openAiTimeoutSeconds;
 
-		public VideoHelper(IStorageHelper sth, IContentSafetyHelper csh, IAzureSQLHelper ash, IHttpClientFactory httpClientFactory)
+		public VideoHelper(IStorageHelper sth, IContentSafetyHelper csh, IHttpClientFactory httpClientFactory)
 		{
 			_requestUri = Environment.GetEnvironmentVariable("ANALYZE_FRAME_AZURE_FUNCTION_URL") ?? "";
 			_sth = sth;
 			_csh = csh;
-			_ash = ash;
 			_httpClient = httpClientFactory.CreateClient(nameof(VideoHelper));
 			_invokeOpenAi = string.Equals(Environment.GetEnvironmentVariable("INVOKE_OPEN_AI"), "true", StringComparison.OrdinalIgnoreCase);
 			_openAiTimeoutSeconds = int.TryParse(Environment.GetEnvironmentVariable("OPEN_AI_TIMEOUT_SECONDS"), out var parsedTimeout)
@@ -114,12 +112,12 @@ namespace NovelCsam.Helpers
 
 			//This could be done better/different
 			int totalCnt = list.Count;
-			int cnt = 0;
 			Console.WriteLine($"\n********************************************************************************");
 			Console.WriteLine($"Total number of records to process: {totalCnt}");
 			Console.WriteLine($"********************************************************************************\n");
 			var runId = Guid.NewGuid().ToString();
 			var runDateTime = DateTime.UtcNow;
+			var exportFolder = string.IsNullOrWhiteSpace(containerFolderPathResults) ? "results" : containerFolderPathResults.Trim('/');
 
 			var tasks = list.Select(async item =>
 			{
@@ -167,22 +165,52 @@ namespace NovelCsam.Helpers
 					}
 				}
 
-				await _ash.CreateFrameResult(newItem);
-				//await _ash.InsertBase64(newItem); I don't think we need this, will confirm...
+				var exportBlobName = $"{runId}/{Path.GetFileNameWithoutExtension(item.Key)}.json";
+				var jsonDocument = JsonConvert.SerializeObject(new
+				{
+					JobId = runId,
+					Frame = item.Key,
+					FrameResult = newItem with { ImageBase64 = null },
+					ExportedAtUtc = DateTime.UtcNow
+				}, Formatting.Indented);
+				var exportPath = await _sth.UploadTextAsync(containerName, exportFolder, exportBlobName, jsonDocument);
 				//This could be done better/different
 				Console.WriteLine($"\n********************************************************************************");
 				Console.WriteLine($"Record processed: {item.Key}");
 				Console.WriteLine($"********************************************************************************\n");
-				cnt++;
+				return exportPath;
 			});
 
-			await Task.WhenAll(tasks);
+			var frameResultBlobs = (await Task.WhenAll(tasks))
+				.Where(result => !string.IsNullOrWhiteSpace(result))
+				.Select(result => result!)
+				.ToList();
+			var cnt = frameResultBlobs.Count;
 			Console.WriteLine($"********************************************************************************");
 			Console.WriteLine($"Total number of records processed: {cnt}/{totalCnt}");
 			Console.WriteLine($"********************************************************************************\n");
 
 			var message = $"RunId: {runId}: Total number of records processed: {cnt}/{totalCnt} ";
 			LogHelper.LogInformation(message,nameof(VideoHelper), nameof(UploadFrameResultsAsync));
+
+			var manifest = new JobResultManifest
+			{
+				JobId = runId,
+				ContainerName = containerName,
+				ContainerDirectory = containerFolderPath,
+				Status = cnt == totalCnt ? "Completed" : "CompletedWithErrors",
+				TotalFrames = totalCnt,
+				ProcessedFrames = cnt,
+				SuccessfulFrames = cnt,
+				FailedFrames = totalCnt - cnt,
+				StartedAtUtc = runDateTime,
+				CompletedAtUtc = DateTime.UtcNow,
+				ExportContainerName = containerName,
+				ExportFolderPath = exportFolder,
+				FrameResultBlobs = frameResultBlobs
+			};
+			var manifestJson = JsonConvert.SerializeObject(manifest, Formatting.Indented);
+			await _sth.UploadTextAsync(containerName, exportFolder, $"{runId}/job-result.json", manifestJson);
 			return runId;
 		}
 
@@ -275,7 +303,8 @@ namespace NovelCsam.Helpers
 			}
 			while (!string.IsNullOrWhiteSpace(statusInstnace.RuntimeStatus) && nonTerminalStatuses.Contains(statusInstnace.RuntimeStatus));
 
-			if (!string.Equals(statusInstnace.RuntimeStatus, "Completed", StringComparison.OrdinalIgnoreCase))
+			if (!string.Equals(statusInstnace.RuntimeStatus, "Completed", StringComparison.OrdinalIgnoreCase) &&
+				!string.Equals(statusInstnace.RuntimeStatus, "CompletedWithErrors", StringComparison.OrdinalIgnoreCase))
 			{
 				throw new InvalidOperationException($"Orchestration ended with status '{statusInstnace.RuntimeStatus}'.");
 			}

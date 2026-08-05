@@ -70,16 +70,11 @@ Use NovelCsam.Functions/local.settings.example.json as the baseline for local de
 
 - STORAGE_USE_MANAGED_IDENTITY
 - AZURE_STORAGE_CONNECTION_STRING
-- STORAGE_ACCOUNT_NAME
-- STORAGE_ACCOUNT_URL
+- STORAGE_ACCOUNT_NAME=cwintstorage
+- STORAGE_ACCOUNT_URL=https://cwintstorage.dfs.core.windows.net
 - STORAGE_ACCOUNT_KEY
 
-### SQL settings
-
-- AZURE_SQL_CONNECTION_STRING
-- SQL_SERVER
-- SQL_DATABASE
-- SQL_MANAGED_IDENTITY_CLIENT_ID
+For local app storage access, the current account name is `cwintstorage`. Leave `AzureWebJobsStorage` on the local development storage value unless you want to run the Functions host against a real Azure Storage account.
 
 ### Content Safety settings
 
@@ -90,6 +85,8 @@ Use NovelCsam.Functions/local.settings.example.json as the baseline for local de
 - CONTENT_SAFETY_CONNECTION_KEY2
 - CONTENT_SAFETY_ENDPOINT3
 - CONTENT_SAFETY_CONNECTION_KEY3
+
+For managed identity, set `CONTENT_SAFETY_USE_MANAGED_IDENTITY=true` and set `CONTENT_SAFETY_ENDPOINT1=https://cwcs001.cognitiveservices.azure.com/`. Leave the key fields blank.
 
 ### OpenAI settings
 
@@ -107,9 +104,11 @@ Use NovelCsam.Functions/local.settings.example.json as the baseline for local de
 - DETAILED_ANALYSIS_PROMPT
 - CHILD_DETECTION_PROMPT
 
-Managed identity is the default production pattern for Storage, SQL, and Content Safety.
+Managed identity is the default production pattern for Storage and Content Safety.
 
 Managed identity is also the default for Azure OpenAI / Azure AI Foundry model invocation.
+
+Result blobs are written to the `results` container and the `results/{runId}/` folder by default.
 
 For your Foundry project endpoint pattern, set:
 
@@ -150,8 +149,7 @@ After deployment, validate identity and data-plane access:
    - Storage Blob Data Contributor
 3. Confirm Key Vault role assignment if Key Vault references are used:
    - Key Vault Secrets User
-4. Confirm SQL access for managed identity (database user and required roles).
-5. Confirm Content Safety access for the managed identity.
+4. Confirm Content Safety access for the managed identity.
 
 Example commands:
 
@@ -167,15 +165,14 @@ az functionapp config appsettings list --name <function-app-name> --resource-gro
 * `VideoHelper.cs`: Implementation of video-related operations.
 * `StorageHelper.cs`: Implementation of storage-related operations.
 
-## Database
+## Results Persistence
 
-This application uses a SQL database.
-The database table create scripts can be found under
-the "Infrastructure" folder. This code can also be
-changed to use any database that we choose. There is
-code that writes result data to a Cosmos DB for example under NovelCsam.Helpers/CosmosDBHelper.cs.
+This application persists frame-level and run-level outputs as JSON blobs in Azure Storage.
 
-* **Create_Tables.sql :** Database tables
+- Per-frame output: `results/{runId}/{frameName}.json`
+- Run manifest: `results/{runId}/job-result.json`
+
+The console export flow reads the manifest and frame JSON blobs and writes CSV locally.
 
 ## Contributing
 
