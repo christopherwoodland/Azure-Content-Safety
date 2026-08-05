@@ -96,13 +96,11 @@ type RunHistoryItem = {
   containerDirectory: string;
 };
 
-const FUNCTION_BASE_URL = (import.meta.env.VITE_FUNCTION_BASE_URL as string | undefined) ?? 'http://localhost:7092';
+const FUNCTION_BASE_URL = (import.meta.env.VITE_FUNCTION_BASE_URL as string | undefined) ?? (import.meta.env.PROD ? '' : 'http://localhost:7092');
 const START_PATH = (import.meta.env.VITE_DURABLE_START_PATH as string | undefined) ?? '/api/AnalyzeFrames_HttpStart';
 const FUNCTION_CODE = (import.meta.env.VITE_FUNCTION_CODE as string | undefined) ?? '';
-const STORAGE_BLOB_BASE_URL = (import.meta.env.VITE_STORAGE_BLOB_BASE_URL as string | undefined) ?? 'https://cwacstest001.blob.core.windows.net';
-const UPLOAD_SAS = (import.meta.env.VITE_UPLOAD_SAS as string | undefined) ?? '';
-const RESULTS_CONTAINER_URL = (import.meta.env.VITE_RESULTS_CONTAINER_URL as string | undefined) ?? 'https://cwacstest001.blob.core.windows.net/results';
-const RESULTS_SAS = (import.meta.env.VITE_RESULTS_SAS as string | undefined) ?? '';
+const STORAGE_ACCESS_PATH = '/api/storage/access';
+const RESULTS_CONTAINER_NAME = (import.meta.env.VITE_RESULTS_CONTAINER_NAME as string | undefined) ?? 'results';
 const TERMINAL_STATUSES = new Set(['Completed', 'Failed', 'Terminated', 'Canceled']);
 const RUN_HISTORY_STORAGE_KEY = 'novelcsam.runHistory.v1';
 const MAX_HISTORY_ITEMS = 30;
@@ -292,11 +290,6 @@ function App() {
     form.frameIntervalSeconds > 0;
 
   async function uploadSelectedVideos(): Promise<void> {
-    if (!UPLOAD_SAS) {
-      setErrorMessage('Upload SAS is missing. Set VITE_UPLOAD_SAS in the web app environment before uploading.');
-      return;
-    }
-
     if (selectedFiles.length === 0) {
       setErrorMessage('Select one or more video files to upload.');
       return;
@@ -311,7 +304,7 @@ function App() {
 
       for (const file of selectedFiles) {
         const blobName = `${uploadDirectory}/${crypto.randomUUID()}-${sanitizeFileName(file.name)}`;
-        const uploadUrl = getUploadUrl(normalizedContainerName, blobName);
+        const uploadUrl = await getStorageAccessUrl('upload', normalizedContainerName, blobName);
 
         const response = await fetch(uploadUrl, {
           method: 'PUT',
@@ -586,12 +579,6 @@ function App() {
                 Upload one or more source videos into <strong>{normalizedContainerName || 'videos'}/{normalizeDirectory(form.containerDirectory) || 'input'}</strong> before launching the durable run.
               </p>
 
-              {!UPLOAD_SAS ? (
-                <div className="warning-banner">
-                  Upload is disabled because VITE_UPLOAD_SAS is empty. You can still continue if videos are already in the container.
-                </div>
-              ) : null}
-
               <label>
                 <span>Video files</span>
                 <input
@@ -630,7 +617,7 @@ function App() {
 
               <div className="button-row">
                 <button className="secondary" onClick={() => setStep('setup')}>Back</button>
-                <button className="secondary" disabled={isUploading || selectedFiles.length === 0 || !UPLOAD_SAS} onClick={uploadSelectedVideos}>
+                <button className="secondary" disabled={isUploading || selectedFiles.length === 0} onClick={uploadSelectedVideos}>
                   {isUploading ? 'Uploading...' : 'Upload selected'}
                 </button>
                 <button className="primary" onClick={() => setStep('review')}>Continue to launch</button>
@@ -933,7 +920,7 @@ async function hydrateResults(
   setLogItems: Dispatch<SetStateAction<LogItem[]>>
 ): Promise<{ manifest: Manifest; rows: ResultRow[] } | null> {
   try {
-    const manifestUrl = appendSas(`${RESULTS_CONTAINER_URL.replace(/\/$/, '')}/results/${runId}/job-result.json`);
+    const manifestUrl = await getStorageAccessUrl('read', RESULTS_CONTAINER_NAME, `results/${runId}/job-result.json`);
     const manifest = await getJson<Manifest>(manifestUrl);
     setManifest(manifest);
     addLogEvent(setLogItems, 'results', 'manifest_loaded', `${manifest.FrameResultBlobs.length} frame result path(s)`);
@@ -949,7 +936,7 @@ async function hydrateResults(
 
     const frameBlobPaths = manifest.FrameResultBlobs.filter((path) => path.toLowerCase().endsWith('.json'));
     const rows = await Promise.all(frameBlobPaths.slice(0, 120).map(async (blobPath, index) => {
-      const frameResultUrl = appendSas(`${RESULTS_CONTAINER_URL.replace(/\/$/, '')}/${blobPath}`);
+      const frameResultUrl = await getStorageAccessUrl('read', RESULTS_CONTAINER_NAME, blobPath);
       const frameData = await getJson<Record<string, unknown>>(frameResultUrl);
       const nestedFrameResult = (frameData.FrameResult && typeof frameData.FrameResult === 'object')
         ? (frameData.FrameResult as Record<string, unknown>)
@@ -1013,13 +1000,24 @@ async function hydrateResults(
   }
 }
 
-function appendSas(url: string): string {
-  if (!RESULTS_SAS) {
-    return url;
+async function getStorageAccessUrl(mode: 'upload' | 'read', containerName: string, blobPath: string): Promise<string> {
+  const response = await fetch(`${FUNCTION_BASE_URL.replace(/\/$/, '')}${STORAGE_ACCESS_PATH}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode, containerName, blobPath })
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Storage access request failed: ${response.status} ${response.statusText} ${text}`);
   }
 
-  const trimmed = RESULTS_SAS.replace(/^\?/, '');
-  return `${url}${url.includes('?') ? '&' : '?'}${trimmed}`;
+  const access = await response.json() as { url?: string };
+  if (!access.url) {
+    throw new Error('Storage access response did not include a URL.');
+  }
+
+  return access.url;
 }
 
 function tryParseStartResponse(value: string): StartResponse {
@@ -1073,16 +1071,6 @@ function extractInstanceIdFromStatusUrl(statusQueryUri: string): string {
     const match = statusQueryUri.match(/\/instances\/([^/?#]+)/i);
     return match?.[1] ? decodeURIComponent(match[1]) : '';
   }
-}
-
-function getUploadUrl(containerName: string, blobPath: string): string {
-  const container = encodeURIComponent(containerName.trim());
-  const encodedPath = blobPath
-    .split('/')
-    .map((segment) => encodeURIComponent(segment))
-    .join('/');
-  const baseUrl = `${STORAGE_BLOB_BASE_URL.replace(/\/$/, '')}/${container}/${encodedPath}`;
-  return appendQueryString(baseUrl, UPLOAD_SAS);
 }
 
 function appendQueryString(url: string, query: string): string {

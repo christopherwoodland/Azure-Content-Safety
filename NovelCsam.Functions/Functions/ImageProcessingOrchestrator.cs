@@ -292,7 +292,7 @@ namespace NovelCsam.Functions.Functions
 
 		[Function("AnalyzeFrames_HttpStart")]
 		public static async Task<HttpResponseData> HttpStart(
-			[HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req,
+			[HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req,
 			[DurableClient] DurableTaskClient client,
 			FunctionContext executionContext)
 		{

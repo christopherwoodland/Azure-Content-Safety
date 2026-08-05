@@ -1,11 +1,22 @@
 name: azure-content-safety
+resourceGroup: content-safety
 metadata:
-  template: azure-functions-dotnet-managed-identity
+  template: azure-content-safety-production
 infra:
   provider: bicep
   path: ./infra
 services:
   functions:
     project: ./NovelCsam.Functions
-    language: dotnet
-    host: function
+    language: docker
+    host: appservice
+    docker:
+      path: ./Dockerfile
+      context: ../
+      registry: ${AZURE_CONTAINER_REGISTRY_ENDPOINT}
+      image: content-safety-functions
+  web:
+    project: ./NovelCsam.Web
+    dist: dist
+    language: ts
+    host: staticwebapp

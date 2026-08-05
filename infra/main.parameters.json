@@ -3,13 +3,13 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "environmentName": {
-      "value": "dev"
+      "value": "prod"
     },
     "location": {
-      "value": "eastus"
+      "value": "canadacentral"
     },
-    "functionAppName": {
-      "value": ""
+    "staticWebAppLocation": {
+      "value": "eastus2"
     },
     "storageAccountName": {
       "value": "cwacstest001"
@@ -17,44 +17,14 @@
     "storageAccountResourceGroupName": {
       "value": "DefaultResourceGroup-CCAN"
     },
-    "keyVaultName": {
-      "value": ""
+    "contentSafetyAccountName": {
+      "value": "cwcs001"
     },
-    "contentSafetyEndpoint1": {
-      "value": ""
+    "contentSafetyResourceGroupName": {
+      "value": "integration"
     },
-    "contentSafetyConnectionKey1SecretUri": {
-      "value": ""
-    },
-    "contentSafetyEndpoint2": {
-      "value": ""
-    },
-    "contentSafetyConnectionKey2SecretUri": {
-      "value": ""
-    },
-    "contentSafetyEndpoint3": {
-      "value": ""
-    },
-    "contentSafetyConnectionKey3SecretUri": {
-      "value": ""
-    },
-    "invokeOpenAi": {
-      "value": false
-    },
-    "openAiEndpoint": {
-      "value": ""
-    },
-    "openAiDeploymentName": {
-      "value": ""
-    },
-    "openAiUseManagedIdentity": {
-      "value": true
-    },
-    "openAiModel": {
-      "value": ""
-    },
-    "openAiTimeoutSeconds": {
-      "value": 2147483647
+    "aiServicesAccountName": {
+      "value": "bhs-development-public-foundry-r"
     }
   }
 }

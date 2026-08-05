@@ -4,6 +4,9 @@
 FROM mcr.microsoft.com/azure-functions/dotnet-isolated:4-dotnet-isolated10.0 AS base
 WORKDIR /home/site/wwwroot
 EXPOSE 8080
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 
 
 # This stage is used to build the service project

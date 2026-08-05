@@ -529,15 +529,16 @@ namespace NovelCsam.Helpers
 		{
 			try
 			{
+				var ffmpegExecutable = OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg";
 				var configuredFfmpegPath = Environment.GetEnvironmentVariable("FFMPEG_PATH");
-				if (!string.IsNullOrWhiteSpace(configuredFfmpegPath) && File.Exists(Path.Combine(configuredFfmpegPath, "ffmpeg.exe")))
+				if (!string.IsNullOrWhiteSpace(configuredFfmpegPath) && File.Exists(Path.Combine(configuredFfmpegPath, ffmpegExecutable)))
 				{
 					FFmpeg.SetExecutablesPath(configuredFfmpegPath);
 				}
 				else
 				{
 					var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-					if (File.Exists(Path.Combine(baseDirectory, "ffmpeg.exe")))
+					if (File.Exists(Path.Combine(baseDirectory, ffmpegExecutable)))
 					{
 						FFmpeg.SetExecutablesPath(baseDirectory);
 					}
@@ -548,7 +549,7 @@ namespace NovelCsam.Helpers
 						foreach (var segment in pathSegments)
 						{
 							var candidate = segment.Trim();
-							if (File.Exists(Path.Combine(candidate, "ffmpeg.exe")))
+							if (File.Exists(Path.Combine(candidate, ffmpegExecutable)))
 							{
 								FFmpeg.SetExecutablesPath(candidate);
 								break;

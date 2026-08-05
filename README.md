@@ -22,9 +22,7 @@ Important:
 
 ## Overview
 
-`NovelCsam.UI.Console` is a console application that provides functionality for extracting frames from video files, uploading them to Azure Blob Storage, and running safety analysis on the extracted frames.
-
-The React web experience is branded as **Content Safety Review**.
+**Content Safety Review** uses a React web interface backed by Azure Functions to upload videos, extract frames, run safety analysis, and review persisted results.
 
 ## Features
 
@@ -42,9 +40,8 @@ The React web experience is branded as **Content Safety Review**.
 - Azure Content Safety Service
   - [https://learn.microsoft.com/en-us/azure/ai-services/content-safety/overview]()
 - FFMpeg
-  - The `ffmpeg.exe, ffplay.exe, and ffprobe.exe` files must be placed in the `NovelCsam.UI.Console` project directory, as shown in the picture. You can download the executable for various platforms, including Windows, from the link above.
+  - Install FFmpeg and set `FFMPEG_PATH` in `NovelCsam.Functions/local.settings.json` to its `bin` directory.
   - [Download FFmpeg](https://ffmpeg.org/download.html)
-  - ![1737774750420](image/README/1737774750420.png)
 
 ## Getting Started
 
@@ -52,7 +49,7 @@ The React web experience is branded as **Content Safety Review**.
 
 ```sh
 git clone https://github.com/yourusername/NovelCsamDetection.git
-cd NovelCsamDetection/NovelCsam.UI.Console
+cd NovelCsamDetection
 ```
 
 ## Application Configuration
@@ -191,11 +188,10 @@ az functionapp config appsettings list --name <function-app-name> --resource-gro
 
 ## Code Structure
 
-* `Program.cs`: The main entry point of the application.
-* `IVideoHelper.cs`: Interface for video-related operations.
-* `IStorageHelper.cs`: Interface for storage-related operations.
-* `VideoHelper.cs`: Implementation of video-related operations.
-* `StorageHelper.cs`: Implementation of storage-related operations.
+* `NovelCsam.Web`: React web interface.
+* `NovelCsam.Functions`: Azure Functions API and durable orchestration.
+* `NovelCsam.Helpers`: Shared storage, video, and Content Safety integrations.
+* `NovelCsam.Models`: Shared request and result models.
 
 ## Results Persistence
 
@@ -204,7 +200,7 @@ This application persists frame-level and run-level outputs as JSON blobs in Azu
 - Per-frame output: `results/{runId}/{frameName}.json`
 - Run manifest: `results/{runId}/job-result.json`
 
-The console export flow reads the manifest and frame JSON blobs and writes CSV locally.
+The web interface reads manifests and frame JSON blobs to present run history and result details.
 
 ## Web Wizard Notes
 
