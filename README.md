@@ -1,4 +1,4 @@
-# ContentSafteyDemo
+# Content Safety Review
 
 ## Modernization Status
 
@@ -23,6 +23,8 @@ Important:
 ## Overview
 
 `NovelCsam.UI.Console` is a console application that provides functionality for extracting frames from video files, uploading them to Azure Blob Storage, and running safety analysis on the extracted frames.
+
+The React web experience is branded as **Content Safety Review**.
 
 ## Features
 

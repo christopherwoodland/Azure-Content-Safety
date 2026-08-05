@@ -459,7 +459,7 @@ function App() {
     <div className="app-shell">
       <header className="hero">
         <div className="hero-copy-wrap">
-          <p className="eyebrow">Novel CSAM Review</p>
+          <p className="eyebrow">Content Safety Review</p>
           <h1>Guided wizard for durable video safety analysis.</h1>
           <p className="hero-copy">
             Configure the source path, launch the durable pipeline, track extraction and frame processing, then review structured JSON outputs in one guided flow.
