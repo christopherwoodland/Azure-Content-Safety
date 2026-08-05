@@ -122,6 +122,7 @@ internal class Program
 
 		var envVariables = new Dictionary<string, string?>
 		{
+			{ "FFMPEG_PATH", configuration["Azure:FfmpegPath"] },
 			{ "STORAGE_USE_MANAGED_IDENTITY", configuration["Azure:StorageUseManagedIdentity"] },
 			{ "STORAGE_USE_AZURE_CLI_CREDENTIAL", configuration["Azure:StorageUseAzureCliCredential"] },
 			{ "AZURE_STORAGE_CONNECTION_STRING", configuration["Azure:StorageConnectionString"] },
