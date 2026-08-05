@@ -12,6 +12,9 @@ param functionAppName string = ''
 @description('Optional override for the Storage Account name. Leave empty to auto-generate.')
 param storageAccountName string = ''
 
+@description('Resource group that contains the existing Storage Account to use.')
+param storageAccountResourceGroupName string = 'DefaultResourceGroup-CCAN'
+
 @description('Optional Key Vault name in the same resource group. Required for Key Vault references and secret role assignment.')
 param keyVaultName string = ''
 
@@ -49,11 +52,11 @@ param openAiUseManagedIdentity bool = true
 param openAiModel string = ''
 
 @description('Timeout in seconds for Azure OpenAI requests.')
-param openAiTimeoutSeconds int = 240
+param openAiTimeoutSeconds int = 2147483647
 
 var normalizedEnv = toLower(replace(environmentName, '-', ''))
 var unique = toLower(take(uniqueString(resourceGroup().id, environmentName), 6))
-var storageName = empty(storageAccountName) ? take('st${normalizedEnv}${unique}', 24) : toLower(storageAccountName)
+var storageName = empty(storageAccountName) ? 'cwacstest001' : toLower(storageAccountName)
 var appName = empty(functionAppName) ? take('func-${normalizedEnv}-${unique}', 60) : functionAppName
 var contentSafetyKey1SettingValue = empty(contentSafetyConnectionKey1SecretUri) ? '' : '@Microsoft.KeyVault(SecretUri=${contentSafetyConnectionKey1SecretUri})'
 var contentSafetyKey2SettingValue = empty(contentSafetyConnectionKey2SecretUri) ? '' : '@Microsoft.KeyVault(SecretUri=${contentSafetyConnectionKey2SecretUri})'
@@ -63,19 +66,9 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = if (!empty(k
   name: keyVaultName
 }
 
-resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
+resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
   name: storageName
-  location: location
-  sku: {
-    name: 'Standard_LRS'
-  }
-  kind: 'StorageV2'
-  properties: {
-    minimumTlsVersion: 'TLS1_2'
-    supportsHttpsTrafficOnly: true
-    allowBlobPublicAccess: false
-    isHnsEnabled: true
-  }
+  scope: resourceGroup(storageAccountResourceGroupName)
 }
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02' = {

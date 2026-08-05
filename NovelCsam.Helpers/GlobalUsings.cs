@@ -1,4 +1,5 @@
 ﻿global using Azure;
+global using Azure.Core;
 global using Azure.AI.ContentSafety;
 global using Azure.Identity;
 global using Azure.Security.KeyVault.Secrets;

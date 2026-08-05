@@ -17,5 +17,9 @@ namespace NovelCsam.Models.Orchestration
 
 		[JsonProperty(PropertyName = "runId")]
         public string RunId{ get; set; } = string.Empty;
+        [JsonProperty(PropertyName = "frameIntervalSeconds")]
+        public int FrameIntervalSeconds { get; set; } = 1;
+        [JsonProperty(PropertyName = "extractedFramesDirectory")]
+        public string ExtractedFramesDirectory { get; set; } = string.Empty;
 	}
 }

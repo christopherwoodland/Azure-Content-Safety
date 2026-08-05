@@ -10,10 +10,12 @@ namespace NovelCsam.Models
 		public int ProcessedFrames { get; init; }
 		public int SuccessfulFrames { get; init; }
 		public int FailedFrames { get; init; }
+		public int SkippedFrames { get; init; }
 		public DateTime StartedAtUtc { get; init; }
 		public DateTime CompletedAtUtc { get; init; }
 		public string ExportContainerName { get; init; } = string.Empty;
 		public string ExportFolderPath { get; init; } = string.Empty;
 		public IReadOnlyList<string> FrameResultBlobs { get; init; } = [];
+		public IReadOnlyList<string> SkippedItems { get; init; } = [];
 	}
 }

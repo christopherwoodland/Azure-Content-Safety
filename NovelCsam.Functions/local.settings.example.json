@@ -1,17 +1,18 @@
 {
   "IsEncrypted": false,
   "Values": {
-    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "AzureWebJobsStorage__accountName": "cwacstest001",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
     "FUNCTIONS_WORKER_RUNTIME_VERSION": "10",
 
     "APPLICATIONINSIGHTS_CONNECTION_STRING": "",
     "ANALYZE_FRAME_AZURE_FUNCTION_URL": "http://localhost:7092/api/AnalyzeFrames_HttpStart?code=<function_key>",
 
-    "STORAGE_USE_MANAGED_IDENTITY": "true",
-    "AZURE_STORAGE_CONNECTION_STRING": "UseDevelopmentStorage=true",
-    "STORAGE_ACCOUNT_NAME": "cwintstorage",
-    "STORAGE_ACCOUNT_URL": "https://cwintstorage.dfs.core.windows.net",
+    "STORAGE_USE_AZURE_CLI_CREDENTIAL": "true",
+    "STORAGE_USE_MANAGED_IDENTITY": "false",
+    "AZURE_STORAGE_CONNECTION_STRING": "",
+    "STORAGE_ACCOUNT_NAME": "cwacstest001",
+    "STORAGE_ACCOUNT_URL": "https://cwacstest001.dfs.core.windows.net",
     "STORAGE_ACCOUNT_KEY": "",
 
     "CONTENT_SAFETY_USE_MANAGED_IDENTITY": "true",
@@ -24,9 +25,10 @@
 
     "INVOKE_OPEN_AI": "false",
     "OPEN_AI_USE_MANAGED_IDENTITY": "true",
-    "OPEN_AI_PROJECT_ENDPOINT": "https://<resource>.ai.azure.com/api/projects/<project>",
-    "OPEN_AI_MODEL": "",
-    "OPEN_AI_TIMEOUT_SECONDS": "240",
+    "OPEN_AI_PROJECT_ENDPOINT": "",
+    "OPEN_AI_ENDPOINT": "https://bhs-development-public-foundry-r.services.ai.azure.com",
+    "OPEN_AI_MODEL": "gpt-5.4-1",
+    "OPEN_AI_TIMEOUT_SECONDS": "2147483647",
 
     "RETRY_MAX_ATTEMPTS": "3",
     "RETRY_BACKOFF_MULTIPLIER": "2.0",

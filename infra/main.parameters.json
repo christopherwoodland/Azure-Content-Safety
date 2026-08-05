@@ -12,7 +12,10 @@
       "value": ""
     },
     "storageAccountName": {
-      "value": ""
+      "value": "cwacstest001"
+    },
+    "storageAccountResourceGroupName": {
+      "value": "DefaultResourceGroup-CCAN"
     },
     "keyVaultName": {
       "value": ""
@@ -51,7 +54,7 @@
       "value": ""
     },
     "openAiTimeoutSeconds": {
-      "value": 240
+      "value": 2147483647
     }
   }
 }

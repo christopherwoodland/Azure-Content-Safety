@@ -12,6 +12,7 @@ namespace NovelCsam.Helpers
 
 		private readonly HttpClient _httpClient;
 		private enum FFMPEG_MODE { VSEG = 0, FSEG = 1 }
+		private const int MAX_CANCELLATION_TIMEOUT_SECONDS = 2_147_483;
 		private const string HATE = "hate";
 		private const string SELF_HARM = "selfharm";
 		private const string VIOLENCE = "violence";
@@ -19,6 +20,12 @@ namespace NovelCsam.Helpers
 		private string _requestUri = "";
 		private readonly bool _invokeOpenAi;
 		private readonly int _openAiTimeoutSeconds;
+
+		private static TokenCredential CreatePreferredAzureCredential()
+		{
+			var isDevelopment = string.Equals(Environment.GetEnvironmentVariable("AZURE_FUNCTIONS_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
+			return isDevelopment ? new AzureCliCredential() : new DefaultAzureCredential();
+		}
 
 		public VideoHelper(IStorageHelper sth, IContentSafetyHelper csh, IHttpClientFactory httpClientFactory)
 		{
@@ -28,8 +35,8 @@ namespace NovelCsam.Helpers
 			_httpClient = httpClientFactory.CreateClient(nameof(VideoHelper));
 			_invokeOpenAi = string.Equals(Environment.GetEnvironmentVariable("INVOKE_OPEN_AI"), "true", StringComparison.OrdinalIgnoreCase);
 			_openAiTimeoutSeconds = int.TryParse(Environment.GetEnvironmentVariable("OPEN_AI_TIMEOUT_SECONDS"), out var parsedTimeout)
-				? Math.Max(30, parsedTimeout)
-				: 240;
+				? Math.Clamp(parsedTimeout, 30, MAX_CANCELLATION_TIMEOUT_SECONDS)
+				: 600;
 
 			if (_invokeOpenAi)
 			{
@@ -57,7 +64,7 @@ namespace NovelCsam.Helpers
 
 					var projectClient = new AIProjectClient(
 						endpoint: new Uri(openAiEndpoint),
-						tokenProvider: new DefaultAzureCredential());
+						tokenProvider: CreatePreferredAzureCredential());
 
 					_projectResponsesClient = projectClient.ProjectOpenAIClient.GetProjectResponsesClientForModel(openAiTargetName);
 				}
@@ -68,7 +75,7 @@ namespace NovelCsam.Helpers
 
 					if (openAiUseManagedIdentity)
 					{
-						var tokenPolicy = new BearerTokenPolicy(new DefaultAzureCredential(), "https://ai.azure.com/.default");
+						var tokenPolicy = new BearerTokenPolicy(CreatePreferredAzureCredential(), "https://ai.azure.com/.default");
 						openAiClient = new OpenAIClient(
 							authenticationPolicy: tokenPolicy,
 							options: new OpenAIClientOptions { Endpoint = new Uri(normalizedEndpoint) });
@@ -257,7 +264,7 @@ namespace NovelCsam.Helpers
 
 		public async Task<string> UploadFrameResultsDurableFunctionAsync(string containerName,
 		string containerFolderPath, string containerFolderPathResults, bool withBase64ofImage = false,
-		bool getSummaryB = true, bool getChildYesNoB = true, string runId = "")
+		bool getSummaryB = true, bool getChildYesNoB = true, string runId = "", int frameIntervalSeconds = 1, string extractedFramesDirectory = "")
 		{
 			if (string.IsNullOrWhiteSpace(_requestUri))
 			{
@@ -271,7 +278,9 @@ namespace NovelCsam.Helpers
 				GetChildYesNo = getChildYesNoB,
 				ContainerName = containerName,
 				ContainerDirectory = containerFolderPath,
-				RunId = runId
+				RunId = runId,
+				FrameIntervalSeconds = Math.Max(1, frameIntervalSeconds),
+				ExtractedFramesDirectory = extractedFramesDirectory
 			};
 			var ret = await CallFunctionHttpStartAsync(JsonConvert.SerializeObject(item));
 			DurableTaskInstance? instance = JsonConvert.DeserializeObject<DurableTaskInstance>(ret);
@@ -411,7 +420,12 @@ namespace NovelCsam.Helpers
 				LogHelper.LogInformation($"Uploaded {fileNameFrame} to {timestamp}", nameof(VideoHelper), nameof(UploadExtractedFramesToBlobAsync));
 			}
 
-			return true;
+			if (extractedFrames.Count == 0)
+			{
+				LogHelper.LogInformation($"No frames were extracted from {sourceFileNameOrPath}.", nameof(VideoHelper), nameof(UploadExtractedFramesToBlobAsync));
+			}
+
+			return extractedFrames.Count > 0;
 		}
 
 		public async Task UploadSegmentVideoToBlobAsync(int splitTime, string fileName, string containerName, string containerFolderPath, string containerFolderPathSegmented)
@@ -512,11 +526,33 @@ namespace NovelCsam.Helpers
 		{
 			try
 			{
-				// Combine the base directory with the relative path to the FFmpeg executables
-				string ffmpegPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory);
-
-				// Set the FFmpeg executables path
-				FFmpeg.SetExecutablesPath(ffmpegPath);
+				var configuredFfmpegPath = Environment.GetEnvironmentVariable("FFMPEG_PATH");
+				if (!string.IsNullOrWhiteSpace(configuredFfmpegPath) && File.Exists(Path.Combine(configuredFfmpegPath, "ffmpeg.exe")))
+				{
+					FFmpeg.SetExecutablesPath(configuredFfmpegPath);
+				}
+				else
+				{
+					var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+					if (File.Exists(Path.Combine(baseDirectory, "ffmpeg.exe")))
+					{
+						FFmpeg.SetExecutablesPath(baseDirectory);
+					}
+					else
+					{
+						var pathEnv = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+						var pathSegments = pathEnv.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
+						foreach (var segment in pathSegments)
+						{
+							var candidate = segment.Trim();
+							if (File.Exists(Path.Combine(candidate, "ffmpeg.exe")))
+							{
+								FFmpeg.SetExecutablesPath(candidate);
+								break;
+							}
+						}
+					}
+				}
 
 				var conversion = FFmpeg.Conversions.New();
 

@@ -70,11 +70,11 @@ Use NovelCsam.Functions/local.settings.example.json as the baseline for local de
 
 - STORAGE_USE_MANAGED_IDENTITY
 - AZURE_STORAGE_CONNECTION_STRING
-- STORAGE_ACCOUNT_NAME=cwintstorage
-- STORAGE_ACCOUNT_URL=https://cwintstorage.dfs.core.windows.net
+- STORAGE_ACCOUNT_NAME=cwacstest001
+- STORAGE_ACCOUNT_URL=https://cwacstest001.dfs.core.windows.net
 - STORAGE_ACCOUNT_KEY
 
-For local app storage access, the current account name is `cwintstorage`. Leave `AzureWebJobsStorage` on the local development storage value unless you want to run the Functions host against a real Azure Storage account.
+For local app storage access, the current account name is `cwacstest001`. Leave `AzureWebJobsStorage` on the local development storage value unless you want to run the Functions host against a real Azure Storage account.
 
 ### Content Safety settings
 
@@ -115,7 +115,7 @@ For your Foundry project endpoint pattern, set:
 - OPEN_AI_PROJECT_ENDPOINT=https://<resource>.ai.azure.com/api/projects/<project>
 - OPEN_AI_MODEL=gpt-5.4
 - OPEN_AI_USE_MANAGED_IDENTITY=true
-- OPEN_AI_TIMEOUT_SECONDS=240
+- OPEN_AI_TIMEOUT_SECONDS=2147483647
 
 Key-based auth remains available as fallback. Secret-valued app settings should be provided via Key Vault references.
 

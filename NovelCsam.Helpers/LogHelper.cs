@@ -74,6 +74,14 @@ namespace NovelCsam.Helpers
 			Log(LogLevel.Information, message, sourceClassName, sourceFunction);
 		}
 
+		public static void LogEvent(string eventName, string sourceClassName, string sourceFunction, string details = "")
+		{
+			var payload = string.IsNullOrWhiteSpace(details)
+				? $"event={eventName}"
+				: $"event={eventName}; details={details}";
+			Log(LogLevel.Information, payload, sourceClassName, sourceFunction);
+		}
+
 		#endregion
 
 		#region Exception Logging

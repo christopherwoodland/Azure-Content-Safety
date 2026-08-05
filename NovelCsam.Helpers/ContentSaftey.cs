@@ -11,6 +11,12 @@ namespace NovelCsam.Helpers
 		private readonly AsyncRetryPolicy _retryPolicy;
 		private const int MAX_CONTENT_SAFETY_INSTANCES = 3;
 
+		private static TokenCredential CreatePreferredAzureCredential()
+		{
+			var isDevelopment = string.Equals(Environment.GetEnvironmentVariable("AZURE_FUNCTIONS_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
+			return isDevelopment ? new AzureCliCredential() : new DefaultAzureCredential();
+		}
+
 
 		public ContentSafetyHelper()
 		{
@@ -34,7 +40,7 @@ namespace NovelCsam.Helpers
 							ContentSafetyClient client;
 							if (useManagedIdentity || string.IsNullOrWhiteSpace(apiKey))
 							{
-								client = new ContentSafetyClient(new Uri(endpoint), new DefaultAzureCredential());
+								client = new ContentSafetyClient(new Uri(endpoint), CreatePreferredAzureCredential());
 							}
 							else
 							{
@@ -120,7 +126,7 @@ namespace NovelCsam.Helpers
 
 			if (useManagedIdentity || string.IsNullOrWhiteSpace(apiKey))
 			{
-				return new ContentSafetyClient(new Uri(endpoint), new DefaultAzureCredential());
+				return new ContentSafetyClient(new Uri(endpoint), CreatePreferredAzureCredential());
 			}
 
 			return new ContentSafetyClient(new Uri(endpoint), new Azure.AzureKeyCredential(apiKey));

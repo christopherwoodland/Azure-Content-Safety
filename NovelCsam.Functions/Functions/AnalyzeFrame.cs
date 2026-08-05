@@ -2,6 +2,19 @@ namespace NovelCsam.Functions.Functions
 {
 	public class AnalyzeFrame
 	{
+		public const string SkippedResultPrefix = "SKIPPED:";
+		private static readonly HashSet<string> SupportedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+		{
+			".jpg",
+			".jpeg",
+			".png",
+			".bmp",
+			".gif",
+			".webp",
+			".tiff",
+			".tif"
+		};
+
 		private readonly IStorageHelper _sth;
 		private readonly IVideoHelper _videoHelper;
 		private readonly AsyncRetryPolicy _retryPolicy;
@@ -48,22 +61,48 @@ namespace NovelCsam.Functions.Functions
 		{
 			try
 			{
+				if (string.IsNullOrWhiteSpace(item.BlobPath))
+				{
+					LogHelper.LogInformation("Skipping frame because blob path is empty.", nameof(AnalyzeFrame), nameof(RunAnalyzeFrameAsync));
+					return $"{SkippedResultPrefix}<empty-path>";
+				}
+
+				var extension = Path.GetExtension(item.BlobPath);
+				if (!SupportedImageExtensions.Contains(extension))
+				{
+					LogHelper.LogInformation($"Skipping unsupported file type '{extension}' for blob '{item.BlobPath}'.", nameof(AnalyzeFrame), nameof(RunAnalyzeFrameAsync));
+					return $"{SkippedResultPrefix}{item.BlobPath}";
+				}
+
 				var frameBinaryData = await _sth.GetBlobAsBinaryDataAsync(item.ContainerName, item.BlobPath, resize: true);
 				if (frameBinaryData == null)
 				{
 					LogHelper.LogInformation($"Skipping frame because blob could not be loaded: {item.BlobPath}", nameof(AnalyzeFrame), nameof(RunAnalyzeFrameAsync));
-					return null;
+					return $"{SkippedResultPrefix}{item.BlobPath}";
 				}
 
+				LogHelper.LogEvent("service.content_safety.call.start", nameof(AnalyzeFrame), nameof(RunAnalyzeFrameAsync), $"blob={item.BlobPath}");
 				var air = await _retryPolicy.ExecuteAsync(() => _videoHelper.GetContentSafteyDetailsAsync(frameBinaryData));
+				LogHelper.LogEvent("service.content_safety.call.success", nameof(AnalyzeFrame), nameof(RunAnalyzeFrameAsync), $"blob={item.BlobPath}");
 				
 				var summary = "";
 				var childYesNo = "";
 				
 				if (_invokeOpenAi)
 				{
-					summary = item.GetSummary ? await _retryPolicy.ExecuteAsync(() => _videoHelper.SummarizeImageAsync(frameBinaryData, _detailedPrompt)) : string.Empty;
-					childYesNo = item.GetChildYesNo ? await _retryPolicy.ExecuteAsync(() => _videoHelper.SummarizeImageAsync(frameBinaryData, _childDetectionPrompt)) : string.Empty;
+					if (item.GetSummary)
+					{
+						LogHelper.LogEvent("service.openai.summary.call.start", nameof(AnalyzeFrame), nameof(RunAnalyzeFrameAsync), $"blob={item.BlobPath}");
+						summary = await _retryPolicy.ExecuteAsync(() => _videoHelper.SummarizeImageAsync(frameBinaryData, _detailedPrompt));
+						LogHelper.LogEvent("service.openai.summary.call.success", nameof(AnalyzeFrame), nameof(RunAnalyzeFrameAsync), $"blob={item.BlobPath}");
+					}
+
+					if (item.GetChildYesNo)
+					{
+						LogHelper.LogEvent("service.openai.child.call.start", nameof(AnalyzeFrame), nameof(RunAnalyzeFrameAsync), $"blob={item.BlobPath}");
+						childYesNo = await _retryPolicy.ExecuteAsync(() => _videoHelper.SummarizeImageAsync(frameBinaryData, _childDetectionPrompt));
+						LogHelper.LogEvent("service.openai.child.call.success", nameof(AnalyzeFrame), nameof(RunAnalyzeFrameAsync), $"blob={item.BlobPath}");
+					}
 
 				}
 				var md5Hash = _videoHelper.CreateMD5Hash(frameBinaryData);
@@ -80,7 +119,7 @@ namespace NovelCsam.Functions.Functions
 					RunDateTime = item.RunDateTime
 				};
 
-				if (air != null)
+				if (air?.CategoriesAnalysis != null)
 				{
 					foreach (var citem in air.CategoriesAnalysis)
 					{

@@ -13,8 +13,8 @@ $AppSettings = @{
 
     "STORAGE_USE_MANAGED_IDENTITY" = "true"
     "AZURE_STORAGE_CONNECTION_STRING" = ""
-    "STORAGE_ACCOUNT_NAME" = ""
-    "STORAGE_ACCOUNT_URL" = ""
+    "STORAGE_ACCOUNT_NAME" = "cwacstest001"
+    "STORAGE_ACCOUNT_URL" = "https://cwacstest001.dfs.core.windows.net"
 
     "CONTENT_SAFETY_USE_MANAGED_IDENTITY" = "true"
     "CONTENT_SAFETY_ENDPOINT1" = ""
@@ -28,7 +28,7 @@ $AppSettings = @{
     "OPEN_AI_USE_MANAGED_IDENTITY" = "true"
     "OPEN_AI_PROJECT_ENDPOINT" = ""
     "OPEN_AI_MODEL" = ""
-    "OPEN_AI_TIMEOUT_SECONDS" = "240"
+    "OPEN_AI_TIMEOUT_SECONDS" = "2147483647"
 
     "RETRY_MAX_ATTEMPTS" = "3"
     "RETRY_BACKOFF_MULTIPLIER" = "2.0"

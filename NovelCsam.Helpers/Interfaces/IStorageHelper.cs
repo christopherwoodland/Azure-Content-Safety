@@ -11,5 +11,6 @@
 		public Task<IReadOnlyList<string>> ListBlobPathsAsync(string containerName, string folderPath, int maxDepth = 10);
 		public Task<BinaryData?> GetBlobAsBinaryDataAsync(string containerName, string blobPath, bool resize = true, int maxSizeBytes = 4194304);
 		public Task<Dictionary<int, string>> ListDirectoriesInFolderAsync(string containerName, string folderPath, int maxDepth = 10);
+		public Task<bool> MoveBlobAsync(string containerName, string sourceBlobPath, string destinationBlobPath, bool overwrite = false);
 	}
 }

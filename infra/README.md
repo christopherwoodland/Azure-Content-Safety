@@ -6,10 +6,11 @@ Hosting target for this deployment is Flex Consumption (Linux).
 
 ## What gets created
 
-- Azure Storage Account (Data Lake Gen2 enabled)
 - Application Insights resource
 - Consumption Function App (Linux) with system-assigned managed identity
-- RBAC assignment: Storage Blob Data Contributor on the storage account for the Function App identity
+- RBAC assignment: Storage Blob Data Contributor on the existing `cwacstest001` storage account for the Function App identity
+
+The storage account itself is not created by this deployment. It must already exist as `cwacstest001` and be reachable from the app.
 
 ## Deployment with Azure Developer CLI
 
@@ -51,11 +52,13 @@ Edit `main.parameters.json` or set values in your azd environment for:
 - contentSafetyConnectionKey2SecretUri
 - contentSafetyConnectionKey3SecretUri
 
+Storage settings are wired to the existing `cwacstest001` account in `DefaultResourceGroup-CCAN`.
+
 For Azure OpenAI/Azure AI Foundry in managed identity mode:
 - set openAiUseManagedIdentity to true
 - set openAiEndpoint to your project endpoint (for example: https://<project>.services.ai.azure.com)
 - set openAiModel to your model name (for example: gpt-5.4)
-- tune openAiTimeoutSeconds for larger/longer-latency models
+- openAiTimeoutSeconds defaults to 2147483647 (max int) for effectively no timeout
 
 ## Key Vault references
 

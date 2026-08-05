@@ -109,7 +109,7 @@ internal class Program
 		services.AddTransient<IStorageHelper, StorageHelper>();
 		services.AddTransient<ICsvExporter, CsvExporter>();
 		services.AddTransient<IVideoHelper, VideoHelper>();
-		services.AddSingleton<HttpClient>();
+		services.AddHttpClient();
 	}
 
 	private static void SetEnvVariables()
@@ -122,38 +122,59 @@ internal class Program
 
 		var envVariables = new Dictionary<string, string?>
 		{
+			{ "STORAGE_USE_MANAGED_IDENTITY", configuration["Azure:StorageUseManagedIdentity"] },
+			{ "STORAGE_USE_AZURE_CLI_CREDENTIAL", configuration["Azure:StorageUseAzureCliCredential"] },
+			{ "AZURE_STORAGE_CONNECTION_STRING", configuration["Azure:StorageConnectionString"] },
 			{ "STORAGE_ACCOUNT_NAME", configuration["Azure:StorageAccountName"] },
 			{ "STORAGE_ACCOUNT_KEY", configuration["Azure:StorageAccountKey"] },
 			{ "STORAGE_ACCOUNT_URL", configuration["Azure:StorageAccountUrl"] },
-			{ "OPEN_AI_DEPLOYMENT_NAME", configuration["Azure:OpenAiDeploymentName"] },
+
+			{ "CONTENT_SAFETY_USE_MANAGED_IDENTITY", configuration["Azure:ContentSafety:UseManagedIdentity"] },
+			{ "CONTENT_SAFETY_ENDPOINT1", configuration["Azure:ContentSafety:Endpoint1"] },
 			{ "OPEN_AI_KEY", configuration["Azure:OpenAiKey"] },
+			{ "OPEN_AI_USE_MANAGED_IDENTITY", configuration["Azure:OpenAiUseManagedIdentity"] },
+			{ "OPEN_AI_PROJECT_ENDPOINT", configuration["Azure:OpenAiProjectEndpoint"] },
 			{ "OPEN_AI_ENDPOINT", configuration["Azure:OpenAiEndpoint"] },
+			{ "OPEN_AI_DEPLOYMENT_NAME", configuration["Azure:OpenAiDeploymentName"] },
 			{ "OPEN_AI_MODEL", configuration["Azure:OpenAiModel"] },
+			{ "OPEN_AI_TIMEOUT_SECONDS", configuration["Azure:OpenAiTimeoutSeconds"] },
+
+			{ "ENABLE_JSON_EXPORT", configuration["Azure:EnableJsonExport"] },
+			{ "JSON_EXPORT_CONTAINER_NAME", configuration["Azure:JsonExportContainerName"] },
+			{ "JSON_EXPORT_FOLDER_PATH", configuration["Azure:JsonExportFolderPath"] },
+
 			{ "APPLICATIONINSIGHTS_CONNECTION_STRING", configuration["Azure:AppInsightsConnectionString"] },
 			{ "INVOKE_OPEN_AI", configuration["Azure:InvokeOpenAI"] },
 			{ "ANALYZE_FRAME_AZURE_FUNCTION_URL", configuration["Azure:AnalyzeFrameAzureFunctionUrl"] },
 			{ "DEBUG_TO_CONSOLE", configuration["Azure:DebugToConsole"] },
-
-			{ "CONTENT_SAFETY_CONNECTION_STRING1", configuration["Azure:ContentSafety:ContentSafetyConnectionString1"] },
 			{ "CONTENT_SAFETY_CONNECTION_KEY1", configuration["Azure:ContentSafety:ContentSafetyConnectionKey1"] },
-
-			{ "CONTENT_SAFETY_CONNECTION_STRING2", configuration["Azure:ContentSafety:ContentSafetyConnectionString2"] },
+			{ "CONTENT_SAFETY_ENDPOINT2", configuration["Azure:ContentSafety:Endpoint2"] },
 			{ "CONTENT_SAFETY_CONNECTION_KEY2", configuration["Azure:ContentSafety:ContentSafetyConnectionKey2"] },
-
-			{ "CONTENT_SAFETY_CONNECTION_STRING3", configuration["Azure:ContentSafety:ContentSafetyConnectionString3"] },
+			{ "CONTENT_SAFETY_ENDPOINT3", configuration["Azure:ContentSafety:Endpoint3"] },
 			{ "CONTENT_SAFETY_CONNECTION_KEY3", configuration["Azure:ContentSafety:ContentSafetyConnectionKey3"] },
 		};
 		foreach (var envVariable in envVariables)
 		{
-			if (string.IsNullOrEmpty(envVariable.Value))
-			{
-				Console.WriteLine($"**********************************************************************");
-				Console.WriteLine($"You are missing an Environment Variable value for key {envVariable.Key}.\nThis may/may not be a configuration issue.");
-				Console.WriteLine($"**********************************************************************");
-
-
-			}
 			Environment.SetEnvironmentVariable(envVariable.Key, envVariable.Value ?? string.Empty);
+		}
+
+		var storageConnectionString = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING");
+		var storageAccountUrl = Environment.GetEnvironmentVariable("STORAGE_ACCOUNT_URL");
+		if (string.IsNullOrWhiteSpace(storageConnectionString) && string.IsNullOrWhiteSpace(storageAccountUrl))
+		{
+			Console.WriteLine("Storage is not fully configured. Set AZURE_STORAGE_CONNECTION_STRING or STORAGE_ACCOUNT_URL before running upload/analysis operations.");
+		}
+
+		var invokeOpenAi = string.Equals(Environment.GetEnvironmentVariable("INVOKE_OPEN_AI"), "true", StringComparison.OrdinalIgnoreCase);
+		if (invokeOpenAi)
+		{
+			var openAiModel = Environment.GetEnvironmentVariable("OPEN_AI_MODEL");
+			var openAiProjectEndpoint = Environment.GetEnvironmentVariable("OPEN_AI_PROJECT_ENDPOINT");
+			var openAiEndpoint = Environment.GetEnvironmentVariable("OPEN_AI_ENDPOINT");
+			if (string.IsNullOrWhiteSpace(openAiModel) || (string.IsNullOrWhiteSpace(openAiProjectEndpoint) && string.IsNullOrWhiteSpace(openAiEndpoint)))
+			{
+				Console.WriteLine("OpenAI is enabled but not fully configured. Set OPEN_AI_MODEL and OPEN_AI_PROJECT_ENDPOINT (preferred) or OPEN_AI_ENDPOINT.");
+			}
 		}
 	}
 	#endregion
@@ -214,6 +235,14 @@ internal class Program
 	#region Frame Extraction Methods
 	private static async Task ExtractFramesAsync(IVideoHelper videoHelper, IStorageHelper storageHelper, string containerName, string inputFolder, string extractedFolder)
 	{
+		Console.WriteLine("Enter frame interval in seconds (e.g. 1 = every second). Press Enter for default 1:");
+		var frameIntervalInput = Console.ReadLine();
+		var frameIntervalSeconds = 1;
+		if (!string.IsNullOrWhiteSpace(frameIntervalInput) && int.TryParse(frameIntervalInput, out var parsedInterval))
+		{
+			frameIntervalSeconds = Math.Max(1, parsedInterval);
+		}
+
 		var blobList = await storageHelper.ListBlobsInFolderWithResizeAsync(containerName, inputFolder, 3, false) ?? [];
 		if (blobList?.Count > 0)
 		{
@@ -246,7 +275,7 @@ internal class Program
 				var done = false;
 				await progressBar.RunWithProgressBarAsync(async () =>
 				{
-					done = await videoHelper.UploadExtractedFramesToBlobAsync(1, fileName, containerName, folderPath, extractedFolder, fileName);
+					done = await videoHelper.UploadExtractedFramesToBlobAsync(frameIntervalSeconds, fileName, containerName, folderPath, extractedFolder, fileName);
 				});
 
 				if (done)
@@ -502,6 +531,12 @@ internal class Program
 			var videoHelper = serviceProvider.GetRequiredService<IVideoHelper>();
 			var storageHelper = serviceProvider.GetRequiredService<IStorageHelper>();
 			var csvHelper = serviceProvider.GetRequiredService<ICsvExporter>();
+
+			if (args.Length > 0 && File.Exists(args[0]))
+			{
+				await UploadVideoAsync(videoHelper, ContainerVideos, ContainerInput, args[0]);
+				return;
+			}
 
 			string choice = PrintMenu();
 			while (choice != "x")

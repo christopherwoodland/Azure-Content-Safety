@@ -10,10 +10,30 @@
 			var accountName = Environment.GetEnvironmentVariable("STORAGE_ACCOUNT_NAME") ?? string.Empty;
 			var accountKey = Environment.GetEnvironmentVariable("STORAGE_ACCOUNT_KEY") ?? string.Empty;
 			var storageUrl = Environment.GetEnvironmentVariable("STORAGE_ACCOUNT_URL") ?? string.Empty;
+			var useAzureCliCredential = string.Equals(
+				Environment.GetEnvironmentVariable("STORAGE_USE_AZURE_CLI_CREDENTIAL"),
+				"true",
+				StringComparison.OrdinalIgnoreCase);
 			var useManagedIdentity = string.Equals(
 				Environment.GetEnvironmentVariable("STORAGE_USE_MANAGED_IDENTITY"),
 				"true",
 				StringComparison.OrdinalIgnoreCase);
+
+			if (useAzureCliCredential)
+			{
+				if (string.IsNullOrWhiteSpace(storageUrl))
+				{
+					if (string.IsNullOrWhiteSpace(accountName))
+					{
+						throw new InvalidOperationException("Storage configuration is missing. Set STORAGE_ACCOUNT_URL or STORAGE_ACCOUNT_NAME.");
+					}
+
+					storageUrl = $"https://{accountName}.dfs.core.windows.net";
+				}
+
+				_serviceClient = new DataLakeServiceClient(new Uri(storageUrl), new AzureCliCredential());
+				return;
+			}
 
 			if (!string.IsNullOrWhiteSpace(connectionString))
 			{
@@ -33,7 +53,15 @@
 
 			if (useManagedIdentity || string.IsNullOrWhiteSpace(accountKey))
 			{
-				_serviceClient = new DataLakeServiceClient(new Uri(storageUrl), new DefaultAzureCredential());
+				var isDevelopment = string.Equals(
+					Environment.GetEnvironmentVariable("AZURE_FUNCTIONS_ENVIRONMENT"),
+					"Development",
+					StringComparison.OrdinalIgnoreCase);
+				TokenCredential credential = isDevelopment
+					? new AzureCliCredential()
+					: new DefaultAzureCredential();
+				Console.WriteLine($"StorageHelper using {credential.GetType().Name} for {storageUrl}.");
+				_serviceClient = new DataLakeServiceClient(new Uri(storageUrl), credential);
 				return;
 			}
 
@@ -369,6 +397,67 @@
 			var fileSystemClient = _serviceClient.GetFileSystemClient(containerName);
 			var directoryClient = fileSystemClient.GetDirectoryClient(folderPath);
 			return directoryClient.GetFileClient(fileName);
+		}
+
+		public async Task<bool> MoveBlobAsync(string containerName, string sourceBlobPath, string destinationBlobPath, bool overwrite = false)
+		{
+			try
+			{
+				if (string.IsNullOrWhiteSpace(sourceBlobPath) || string.IsNullOrWhiteSpace(destinationBlobPath))
+				{
+					return false;
+				}
+
+				var normalizedSource = sourceBlobPath.Replace('\\', '/').Trim('/');
+				var normalizedDestination = destinationBlobPath.Replace('\\', '/').Trim('/');
+				if (string.Equals(normalizedSource, normalizedDestination, StringComparison.OrdinalIgnoreCase))
+				{
+					return false;
+				}
+
+				var sourceFolder = Path.GetDirectoryName(normalizedSource)?.Replace('\\', '/') ?? string.Empty;
+				var sourceFileName = Path.GetFileName(normalizedSource);
+				if (string.IsNullOrWhiteSpace(sourceFileName))
+				{
+					return false;
+				}
+
+				var fileSystemClient = _serviceClient.GetFileSystemClient(containerName);
+				var destinationFolder = Path.GetDirectoryName(normalizedDestination)?.Replace('\\', '/') ?? string.Empty;
+				var destinationFileName = Path.GetFileName(normalizedDestination);
+				if (!string.IsNullOrWhiteSpace(destinationFolder))
+				{
+					var destinationDirectoryClient = fileSystemClient.GetDirectoryClient(destinationFolder);
+					await destinationDirectoryClient.CreateIfNotExistsAsync();
+				}
+
+				var destinationFileClient = GetFileClient(containerName, destinationFolder, destinationFileName);
+				var destinationExists = await destinationFileClient.ExistsAsync();
+				if (destinationExists.Value)
+				{
+					if (!overwrite)
+					{
+						return false;
+					}
+
+					await destinationFileClient.DeleteIfExistsAsync();
+				}
+
+				var sourceFileClient = GetFileClient(containerName, sourceFolder, sourceFileName);
+				var exists = await sourceFileClient.ExistsAsync();
+				if (!exists.Value)
+				{
+					return false;
+				}
+
+				await sourceFileClient.RenameAsync(normalizedDestination);
+				return true;
+			}
+			catch (Exception ex)
+			{
+				LogHelper.LogException($"An error occurred while moving blob from '{sourceBlobPath}' to '{destinationBlobPath}': {ex.Message}", nameof(StorageHelper), nameof(MoveBlobAsync), ex);
+				return false;
+			}
 		}
 	}
 

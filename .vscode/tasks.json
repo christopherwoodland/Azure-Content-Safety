@@ -1,0 +1,55 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "check-sample-upload",
+			"type": "shell",
+			"command": "az",
+			"args": [
+				"storage",
+				"blob",
+				"list",
+				"--account-name",
+				"cwacstest001",
+				"--auth-mode",
+				"login",
+				"--container-name",
+				"videos",
+				"--prefix",
+				"input/sample.mp4",
+				"--query",
+				"[].name",
+				"-o",
+				"tsv"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "list-input-blobs",
+			"type": "shell",
+			"command": "az",
+			"args": [
+				"storage",
+				"blob",
+				"list",
+				"--account-name",
+				"cwacstest001",
+				"--auth-mode",
+				"login",
+				"--container-name",
+				"videos",
+				"--prefix",
+				"input/",
+				"--query",
+				"[].name",
+				"-o",
+				"json"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		}
+	]
+}

@@ -14,5 +14,9 @@
         bool GetChildYesNo { get; set; }
 		[JsonProperty(PropertyName = "runId")]
 		string RunId { get; set; }
+        [JsonProperty(PropertyName = "frameIntervalSeconds")]
+        int FrameIntervalSeconds { get; set; }
+        [JsonProperty(PropertyName = "extractedFramesDirectory")]
+        string ExtractedFramesDirectory { get; set; }
 	}
 }
