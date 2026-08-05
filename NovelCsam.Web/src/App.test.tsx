@@ -55,7 +55,7 @@ describe('App wizard flow', () => {
     expect(continueButton).toBeDisabled();
 
     const archiveToggle = screen.getByLabelText(/archive input files after success/i);
-    expect(archiveToggle).not.toBeChecked();
+    expect(archiveToggle).toBeChecked();
   });
 
   it('moves to review step and starts analysis with expected payload', async () => {
@@ -92,7 +92,7 @@ describe('App wizard flow', () => {
       getChildYesNo: true,
       getSummary: true,
       imageBase64ToDB: true,
-      archiveSourceOnSuccess: false
+      archiveSourceOnSuccess: true
     });
 
     await waitFor(() => {
@@ -102,7 +102,7 @@ describe('App wizard flow', () => {
     expect(screen.getByText(/\[DURABLE\] submitted: runId=00000000-0000-4000-8000-000000000123/i)).toBeInTheDocument();
   });
 
-  it('sends archiveSourceOnSuccess=true when archive toggle is enabled', async () => {
+  it('sends archiveSourceOnSuccess=false when archive toggle is disabled', async () => {
     render(<App />);
 
     await userEvent.click(screen.getByLabelText(/archive input files after success/i));
@@ -121,6 +121,6 @@ describe('App wizard flow', () => {
     expect(startCall).toBeDefined();
 
     const body = JSON.parse(String(startCall?.[1]?.body ?? '{}')) as Record<string, unknown>;
-    expect(body.archiveSourceOnSuccess).toBe(true);
+    expect(body.archiveSourceOnSuccess).toBe(false);
   });
 });

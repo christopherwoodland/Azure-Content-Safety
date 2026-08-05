@@ -385,3 +385,6 @@ FodyWeavers.xsd
 
 # Local Azurite emulator state
 /.azurite/
+
+# Local one-command startup logs/state
+/.tmp-localrun/

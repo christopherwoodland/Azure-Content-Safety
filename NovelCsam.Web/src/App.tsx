@@ -125,7 +125,7 @@ const initialForm: WizardForm = {
   pollingIntervalSeconds: 8,
   getSummary: true,
   getChildYesNo: true,
-  archiveSourceOnSuccess: false
+  archiveSourceOnSuccess: true
 };
 
 function App() {

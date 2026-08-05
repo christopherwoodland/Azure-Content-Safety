@@ -139,6 +139,29 @@ Run locally from repository root:
 dotnet build .\NovelCsamDetection.sln --nologo
 dotnet test .\NovelCsamDetection.Tests\NovelCsamDetection.Tests.csproj --nologo
 
+## Run Locally (Single Command)
+
+From repository root:
+
+```powershell
+.\start-local.ps1
+```
+
+What it does:
+
+- Stops existing local `func`/`dotnet`/`node`/`esbuild`/`azurite` processes (unless `-KeepExistingProcesses` is passed).
+- Builds the solution (unless `-NoBuild` is passed).
+- Starts Azurite with `--skipApiVersionCheck` for local Durable compatibility.
+- Starts Azure Functions on `http://localhost:7092`.
+- Starts the web app on `http://127.0.0.1:5173`.
+
+Optional flags:
+
+```powershell
+.\start-local.ps1 -NoBuild
+.\start-local.ps1 -KeepExistingProcesses
+```
+
 ## CI Quality Gate
 
 GitHub Actions workflow:
@@ -187,9 +210,9 @@ The console export flow reads the manifest and frame JSON blobs and writes CSV l
 
 The React wizard in `NovelCsam.Web` includes a per-run archive policy in Step 1:
 
-- `Archive input files after success` is disabled by default.
-- Disabled means source files remain in `videos/input` after successful completion so repeated runs can process the same inputs without manual re-upload.
+- `Archive input files after success` is enabled by default.
 - Enabled moves successfully processed source files to `videos/processed/{runId}/` after a run completes with no frame failures.
+- Disable it when you want source files to remain in `videos/input` for repeat runs without manual re-upload.
 
 In Step 5 (results), each frame card has a pill action button labeled `View details` that opens the frame detail page.
 
