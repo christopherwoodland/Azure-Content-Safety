@@ -277,6 +277,7 @@ sample/**/*.mpg
 **/.env
 **/.env.*
 !**/.env.example
+!NovelCsam.Web/.env.production
 ServiceFabricBackup/
 *.rptproj.bak
 

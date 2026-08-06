@@ -33,6 +33,19 @@ describe('App wizard flow', () => {
         );
       }
 
+      if (url.includes('/api/storage/access')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ Url: 'https://storage.example/upload-target' }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        );
+      }
+
+      if (url === 'https://storage.example/upload-target') {
+        return Promise.resolve(new Response(null, { status: 201 }));
+      }
+
       return Promise.resolve(new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } }));
     });
   });
@@ -100,6 +113,24 @@ describe('App wizard flow', () => {
     });
 
     expect(screen.getByText(/\[DURABLE\] submitted: runId=00000000-0000-4000-8000-000000000123/i)).toBeInTheDocument();
+  });
+
+  it('uploads a selected video when storage access returns PascalCase Url', async () => {
+    render(<App />);
+
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    const file = new File(['video-data'], 'sample.mp4', { type: 'video/mp4' });
+    await userEvent.upload(screen.getByLabelText(/video files/i), file);
+    await userEvent.click(screen.getByRole('button', { name: /upload selected/i }));
+
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        'https://storage.example/upload-target',
+        expect.objectContaining({ method: 'PUT', body: file })
+      );
+    });
+
+    expect(await screen.findByText(/input\/00000000-0000-4000-8000-000000000123-sample.mp4/i)).toBeInTheDocument();
   });
 
   it('sends archiveSourceOnSuccess=false when archive toggle is disabled', async () => {

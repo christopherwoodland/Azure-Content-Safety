@@ -112,6 +112,7 @@ module storageAccess './storage-access.bicep' = {
   name: 'storage-access'
   scope: resourceGroup(storageAccountResourceGroupName)
   params: {
+    frontendOrigin: 'https://${staticWebApp.properties.defaultHostname}'
     identityPrincipalId: identity.properties.principalId
     storageAccountName: storageAccountName
   }
@@ -185,6 +186,12 @@ resource functionApp 'Microsoft.Web/sites@2025-03-01' = {
       minTlsVersion: '1.2'
       ftpsState: 'Disabled'
       http20Enabled: true
+      cors: {
+        allowedOrigins: [
+          'https://${staticWebApp.properties.defaultHostname}'
+        ]
+        supportCredentials: false
+      }
       appSettings: [
         { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' }
         { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'dotnet-isolated' }
@@ -195,9 +202,6 @@ resource functionApp 'Microsoft.Web/sites@2025-03-01' = {
         { name: 'DOCKER_REGISTRY_SERVER_URL', value: registry.properties.loginServer }
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
         { name: 'APPLICATIONINSIGHTS_AUTHENTICATION_STRING', value: 'Authorization=AAD;ClientId=${identity.properties.clientId}' }
-        { name: 'AzureFunctionsJobHost__extensions__durableTask__hubName', value: taskHubName }
-        { name: 'AzureFunctionsJobHost__extensions__durableTask__storageProvider__type', value: 'azureManaged' }
-        { name: 'AzureFunctionsJobHost__extensions__durableTask__storageProvider__connectionStringName', value: 'DURABLE_TASK_SCHEDULER_CONNECTION_STRING' }
         { name: 'DURABLE_TASK_SCHEDULER_CONNECTION_STRING', value: 'Endpoint=${scheduler.properties.endpoint};Authentication=ManagedIdentity;ClientID=${identity.properties.clientId}' }
         { name: 'TASKHUB_NAME', value: taskHubName }
         { name: 'STORAGE_USE_MANAGED_IDENTITY', value: 'true' }
@@ -248,9 +252,9 @@ resource staticWebApp 'Microsoft.Web/staticSites@2025-03-01' = {
   }
 }
 
-resource linkedBackend 'Microsoft.Web/staticSites/linkedBackends@2024-11-01' = {
+resource linkedBackend 'Microsoft.Web/staticSites/linkedBackends@2025-03-01' = {
   parent: staticWebApp
-  name: 'production'
+  name: 'default'
   kind: 'functionapp'
   properties: {
     backendResourceId: functionApp.id

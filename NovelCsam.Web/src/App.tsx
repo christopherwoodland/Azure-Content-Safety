@@ -1012,12 +1012,13 @@ async function getStorageAccessUrl(mode: 'upload' | 'read', containerName: strin
     throw new Error(`Storage access request failed: ${response.status} ${response.statusText} ${text}`);
   }
 
-  const access = await response.json() as { url?: string };
-  if (!access.url) {
+  const access = await response.json() as { url?: string; Url?: string };
+  const url = access.url ?? access.Url;
+  if (!url) {
     throw new Error('Storage access response did not include a URL.');
   }
 
-  return access.url;
+  return url;
 }
 
 function tryParseStartResponse(value: string): StartResponse {
@@ -1041,11 +1042,21 @@ function getStatusQueryUri(startData: StartResponse, headers: Headers): string {
     startData.managementUrls?.StatusQueryGetUri ??
     '';
 
-  if (fromBody) {
-    return fromBody;
+  const value = fromBody || headers.get('location') || '';
+  if (!value) {
+    return '';
   }
 
-  return headers.get('location') ?? '';
+  try {
+    const statusUrl = new URL(value);
+    const functionUrl = new URL(FUNCTION_BASE_URL || window.location.origin, window.location.origin);
+    if (statusUrl.host === functionUrl.host && functionUrl.protocol === 'https:' && statusUrl.protocol === 'http:') {
+      statusUrl.protocol = 'https:';
+    }
+    return statusUrl.toString();
+  } catch {
+    return value;
+  }
 }
 
 function getInstanceId(startData: StartResponse, headers: Headers, statusQueryUri = ''): string {

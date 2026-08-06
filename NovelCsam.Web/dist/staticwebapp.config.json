@@ -1,6 +1,7 @@
 {
   "routes": [
     { "route": "/.auth/*", "allowedRoles": ["anonymous"] },
+    { "route": "/favicon.svg", "allowedRoles": ["anonymous"] },
     { "route": "/api/*", "allowedRoles": ["authenticated"] },
     { "route": "/*", "allowedRoles": ["authenticated"] }
   ],
